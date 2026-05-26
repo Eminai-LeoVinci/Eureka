@@ -47,6 +47,7 @@ pluginManagement {
 
 include("common")
 include("fabric")
-include("forge")
+// :forge subproject disabled for 1.21.11 port — only Fabric is the target.
+// include("forge")
 
 rootProject.name = "vs-eureka-mod"

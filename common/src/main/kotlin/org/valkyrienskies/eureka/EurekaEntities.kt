@@ -3,6 +3,8 @@ package org.valkyrienskies.eureka
 import net.minecraft.client.renderer.entity.EntityRendererProvider
 import net.minecraft.client.renderer.entity.EntityRenderers
 import net.minecraft.core.registries.Registries
+import net.minecraft.resources.Identifier
+import net.minecraft.resources.ResourceKey
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.MobCategory
@@ -41,7 +43,9 @@ object EurekaEntities {
         this.apply { ENTITY_RENDERERS += ToRegEntityRenderer(this, factory) }
 
     private infix fun <T : Entity> EntityType.Builder<T>.byName(name: String) =
-        ENTITIES.register(name) { this.build(name) }
+        ENTITIES.register(name) {
+            this.build(ResourceKey.create(Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath(EurekaMod.MOD_ID, name)))
+        }
 
     @JvmStatic
     fun registerRenderers() =

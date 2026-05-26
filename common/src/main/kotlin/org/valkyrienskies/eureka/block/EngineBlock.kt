@@ -27,9 +27,10 @@ import net.minecraft.world.level.material.MapColor
 import net.minecraft.world.phys.BlockHitResult
 import org.valkyrienskies.eureka.EurekaProperties.HEAT
 import org.valkyrienskies.eureka.blockentity.EngineBlockEntity
+import org.valkyrienskies.mod.common.blockProps
 
 class EngineBlock : BaseEntityBlock(
-    Properties.of().mapColor(MapColor.STONE)
+    blockProps().mapColor(MapColor.STONE)
         .requiresCorrectToolForDrops()
         .strength(3.5F)
         .sound(SoundType.STONE)

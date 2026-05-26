@@ -10,16 +10,15 @@ import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.BlockHitResult
-import org.valkyrienskies.core.api.ships.getAttachment
+import org.valkyrienskies.core.api.attachment.getAttachment
 import org.valkyrienskies.eureka.EurekaConfig
 import org.valkyrienskies.eureka.ship.EurekaShipControl
-import org.valkyrienskies.mod.common.getShipManagingPos
-import org.valkyrienskies.mod.common.getShipObjectManagingPos
+import org.valkyrienskies.mod.common.getLoadedShipManagingPos
 
 class BalloonBlock(properties: Properties) : Block(properties) {
 
-    override fun fallOn(level: Level, state: BlockState, blockPos: BlockPos, entity: Entity, f: Float) {
-        entity.causeFallDamage(f, 0.2f, entity.damageSources().fall())
+    override fun fallOn(level: Level, state: BlockState, blockPos: BlockPos, entity: Entity, fallDistance: Double) {
+        entity.causeFallDamage(fallDistance, 0.2f, entity.damageSources().fall())
     }
 
     override fun onPlace(state: BlockState, level: Level, pos: BlockPos, oldState: BlockState, isMoving: Boolean) {
@@ -28,17 +27,14 @@ class BalloonBlock(properties: Properties) : Block(properties) {
         if (level.isClientSide) return
         level as ServerLevel
 
-        val ship = level.getShipObjectManagingPos(pos) ?: level.getShipManagingPos(pos) ?: return
+        val ship = level.getLoadedShipManagingPos(pos) ?: return
         EurekaShipControl.getOrCreate(ship).balloons += 1
     }
 
-    override fun onRemove(state: BlockState, level: Level, pos: BlockPos, newState: BlockState, isMoving: Boolean) {
-        super.onRemove(state, level, pos, newState, isMoving)
+    override fun affectNeighborsAfterRemoval(state: BlockState, level: ServerLevel, pos: BlockPos, isMoving: Boolean) {
+        super.affectNeighborsAfterRemoval(state, level, pos, isMoving)
 
-        if (level.isClientSide) return
-        level as ServerLevel
-
-        level.getShipManagingPos(pos)?.getAttachment<EurekaShipControl>()?.let {
+        level.getLoadedShipManagingPos(pos)?.getAttachment<EurekaShipControl>()?.let {
             it.balloons -= 1
         }
     }

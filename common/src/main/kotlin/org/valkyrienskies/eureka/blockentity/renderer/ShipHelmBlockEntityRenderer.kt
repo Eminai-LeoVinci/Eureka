@@ -1,51 +1,82 @@
 package org.valkyrienskies.eureka.blockentity.renderer
 
 import com.mojang.blaze3d.vertex.PoseStack
-import net.minecraft.client.renderer.MultiBufferSource
+import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer
+import net.minecraft.client.renderer.state.CameraRenderState
+import net.minecraft.client.renderer.texture.OverlayTexture
 import net.minecraft.world.level.block.state.properties.BlockStateProperties
+import net.minecraft.world.phys.Vec3
 import org.joml.AxisAngle4f
 import org.joml.Quaternionf
-import org.joml.Vector3f
+import org.valkyrienskies.eureka.EurekaBlocks
+import org.valkyrienskies.eureka.block.ShipHelmBlock
+import org.valkyrienskies.eureka.block.ShipHelmWheelBlock
+import org.valkyrienskies.eureka.block.WoodType
 import org.valkyrienskies.eureka.blockentity.ShipHelmBlockEntity
 import org.valkyrienskies.mod.common.getShipManagingPos
 
-class ShipHelmBlockEntityRenderer(val ctx: BlockEntityRendererProvider.Context) :
-    BlockEntityRenderer<ShipHelmBlockEntity> {
+class ShipHelmBlockEntityRenderer(ctx: BlockEntityRendererProvider.Context) :
+    BlockEntityRenderer<ShipHelmBlockEntity, ShipHelmBlockEntityRenderer.ShipHelmRenderState> {
 
-    override fun render(
+    class ShipHelmRenderState : BlockEntityRenderState() {
+        @JvmField
+        var wheelRotation: Float = 0f
+    }
+
+    override fun createRenderState(): ShipHelmRenderState = ShipHelmRenderState()
+
+    override fun extractRenderState(
         blockEntity: ShipHelmBlockEntity,
-        partialTicks: Float,
-        matrixStack: PoseStack,
-        buffer: MultiBufferSource,
-        combinedLight: Int,
-        combinedOverlay: Int
+        state: ShipHelmRenderState,
+        partialTick: Float,
+        cameraPos: Vec3,
+        crumblingOverlay: ModelFeatureRenderer.CrumblingOverlay?
     ) {
-        matrixStack.pushPose()
-        // Wheel offset of the base
-        matrixStack.translate(0.5, 0.60, 0.5)
-        // Rotate wheel towards the direction its facing
-        matrixStack.mulPose(
+        super.extractRenderState(blockEntity, state, partialTick, cameraPos, crumblingOverlay)
+        // The wheel deflects with the ship's current turn rate, like a helmsman holding it.
+        val ship = blockEntity.level?.getShipManagingPos(blockEntity.blockPos)
+        state.wheelRotation = if (ship != null) ship.angularVelocity.y().toFloat() else 0f
+    }
+
+    override fun submit(
+        state: ShipHelmRenderState,
+        poseStack: PoseStack,
+        collector: SubmitNodeCollector,
+        cameraState: CameraRenderState
+    ) {
+        val helmBlock = state.blockState.block as? ShipHelmBlock ?: return
+        val woodType = helmBlock.woodType as? WoodType ?: return
+        val wheelState = EurekaBlocks.SHIP_HELM_WHEEL.get().defaultBlockState()
+            .setValue(ShipHelmWheelBlock.WOOD, woodType)
+
+        poseStack.pushPose()
+        // Wheel pivot above the helm base.
+        poseStack.translate(0.5, 0.60, 0.5)
+        // Rotate the wheel to face the helm's direction.
+        poseStack.mulPose(
             Quaternionf(
                 AxisAngle4f(
-                    (-blockEntity.blockState.getValue(BlockStateProperties.HORIZONTAL_FACING)
-                        .toYRot() * Math.PI / 180.0).toFloat(), 0.0f, 1.0f, 0.0f
+                    (-state.blockState.getValue(BlockStateProperties.HORIZONTAL_FACING)
+                        .toYRot() * Math.PI / 180.0).toFloat(),
+                    0.0f, 1.0f, 0.0f
                 )
             )
         )
-        val ship = (blockEntity.level)?.getShipManagingPos(blockEntity.blockPos)
-        var rot = 0.0
-        if (ship != null) {
-            rot = ship.omega.y()
-        }
-        // Add offset of the base based of rotation
-        matrixStack.translate(0.0, 0.0, 0.19)
-        // Rotate the wheel based of the ship omega
-        matrixStack.mulPose(Quaternionf(AxisAngle4f((rot / 20f * Math.PI.toFloat()).toFloat(), 0.0f, 0.0f, 1.0f)))
-        // Render the wheel
-        WheelModels.render(matrixStack, blockEntity, buffer, combinedLight, combinedOverlay)
-
-        matrixStack.popPose()
+        // Push the wheel out from the base along the facing axis.
+        poseStack.translate(0.0, 0.0, 0.19)
+        // Spin the wheel with the ship's angular velocity.
+        poseStack.mulPose(
+            Quaternionf(
+                AxisAngle4f(state.wheelRotation / 20f * Math.PI.toFloat(), 0.0f, 0.0f, 1.0f)
+            )
+        )
+        // The wheel model isn't centred on its own origin.
+        poseStack.translate(-0.5, -0.625, -0.25)
+        collector.submitBlock(poseStack, wheelState, state.lightCoords, OverlayTexture.NO_OVERLAY, 0)
+        poseStack.popPose()
     }
 }

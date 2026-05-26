@@ -1,10 +1,10 @@
 package org.valkyrienskies.eureka.gui.shiphelm
 
-import com.mojang.blaze3d.systems.RenderSystem
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.Button
-import net.minecraft.client.renderer.GameRenderer
+import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
 import net.minecraft.util.FormattedCharSequence
 
@@ -17,24 +17,27 @@ class ShipHelmButton(x: Int, y: Int, text: Component, private val font: Font, on
         active = true
     }
 
-    override fun renderWidget(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTicks: Float) {
+    // 1.21.11: AbstractButton.renderWidget is now final; custom buttons override renderContents.
+    // The RenderSystem.setShader/setShaderTexture/blend calls were removed — GuiGraphics.blit
+    // binds the pipeline and texture itself.
+    override fun renderContents(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTicks: Float) {
         if (!isHovered) isPressed = false
 
-        RenderSystem.setShader { GameRenderer.getPositionTexShader() }
-        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
-        RenderSystem.setShaderTexture(0, ShipHelmScreen.TEXTURE)
-
-        RenderSystem.enableBlend()
-        RenderSystem.defaultBlendFunc()
-        RenderSystem.enableDepthTest()
-
         if (this.isPressed || !this.active) {
-            guiGraphics.blit(ShipHelmScreen.TEXTURE, x, y, BUTTON_P_X, BUTTON_P_Y, width, height)
+            guiGraphics.blit(
+                RenderPipelines.GUI_TEXTURED, ShipHelmScreen.TEXTURE, x, y,
+                BUTTON_P_X.toFloat(), BUTTON_P_Y.toFloat(), width, height, 256, 256
+            )
         } else if (this.isHovered) {
-            guiGraphics.blit(ShipHelmScreen.TEXTURE, x, y, BUTTON_H_X, BUTTON_H_Y, width, height)
+            guiGraphics.blit(
+                RenderPipelines.GUI_TEXTURED, ShipHelmScreen.TEXTURE, x, y,
+                BUTTON_H_X.toFloat(), BUTTON_H_Y.toFloat(), width, height, 256, 256
+            )
         }
 
-        val color = 0x404040
+        // 1.21.11: GuiGraphics.drawString skips text whose color has alpha 0
+        // (ARGB.alpha(color) != 0 gate). Must pass a fully-opaque ARGB color.
+        val color = 0xFF404040.toInt()
         val formattedCharSequence: FormattedCharSequence = message.visualOrderText
         guiGraphics.drawString(
             font,
@@ -46,12 +49,12 @@ class ShipHelmButton(x: Int, y: Int, text: Component, private val font: Font, on
         )
     }
 
-    override fun onClick(mouseX: Double, mouseY: Double) {
+    override fun onClick(mouseButtonEvent: MouseButtonEvent, bl: Boolean) {
         isPressed = true
-        super.onClick(mouseX, mouseY)
+        super.onClick(mouseButtonEvent, bl)
     }
 
-    override fun onRelease(mouseX: Double, mouseY: Double) {
+    override fun onRelease(mouseButtonEvent: MouseButtonEvent) {
         isPressed = false
     }
 

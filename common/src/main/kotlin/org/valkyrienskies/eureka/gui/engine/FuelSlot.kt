@@ -4,11 +4,13 @@ import net.minecraft.world.Container
 import net.minecraft.world.inventory.Slot
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
+import net.minecraft.world.level.block.entity.FuelValues
 import org.valkyrienskies.eureka.registry.FuelRegistry
 
-class FuelSlot(container: Container, slot: Int, x: Int, y: Int) : Slot(container, slot, x, y) {
+class FuelSlot(container: Container, slot: Int, x: Int, y: Int, private val fuelValues: FuelValues) :
+    Slot(container, slot, x, y) {
     override fun mayPlace(stack: ItemStack): Boolean {
-        return FuelRegistry.INSTANCE.get(stack) > 0 || isBucket(stack)
+        return FuelRegistry.INSTANCE.get(stack, fuelValues) > 0 || isBucket(stack)
     }
 
     override fun getMaxStackSize(stack: ItemStack): Int {

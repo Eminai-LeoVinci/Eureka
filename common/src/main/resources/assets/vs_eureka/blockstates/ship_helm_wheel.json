@@ -1,8 +1,5 @@
 {
   "variants": {
-    "": {
-      "model": "vs_eureka:block/oak_ship_helm_wheel"
-    },
     "wood=oak": {
       "model": "vs_eureka:block/oak_ship_helm_wheel"
     },

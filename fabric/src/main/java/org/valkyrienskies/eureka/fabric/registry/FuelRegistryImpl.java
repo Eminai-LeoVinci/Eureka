@@ -1,7 +1,7 @@
 package org.valkyrienskies.eureka.fabric.registry;
 
-import net.fabricmc.fabric.api.registry.FuelRegistry;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.entity.FuelValues;
 
 public class FuelRegistryImpl extends org.valkyrienskies.eureka.registry.FuelRegistry {
     public FuelRegistryImpl() {
@@ -9,8 +9,7 @@ public class FuelRegistryImpl extends org.valkyrienskies.eureka.registry.FuelReg
     }
 
     @Override
-    public int get(ItemStack stack) {
-        Integer time = FuelRegistry.INSTANCE.get(stack.getItem());
-        return time == null ? 0 : time;
+    public int get(ItemStack stack, FuelValues fuelValues) {
+        return fuelValues.burnDuration(stack);
     }
 }

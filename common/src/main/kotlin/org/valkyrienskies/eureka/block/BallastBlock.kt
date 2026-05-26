@@ -9,9 +9,11 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.StateDefinition
 import net.minecraft.world.level.block.state.properties.BlockStateProperties.POWER
 import net.minecraft.world.level.material.MapColor
+import net.minecraft.world.level.redstone.Orientation
+import org.valkyrienskies.mod.common.blockProps
 
 class BallastBlock : Block(
-    Properties.of().mapColor(MapColor.STONE)
+    blockProps().mapColor(MapColor.STONE)
         .sound(SoundType.STONE).strength(1.0f, 2.0f)
 ) {
 
@@ -29,10 +31,10 @@ class BallastBlock : Block(
         level: Level,
         pos: BlockPos,
         block: Block,
-        fromPos: BlockPos,
+        orientation: Orientation?,
         isMoving: Boolean
     ) {
-        super.neighborChanged(state, level, pos, block, fromPos, isMoving)
+        super.neighborChanged(state, level, pos, block, orientation, isMoving)
 
         if (level as? ServerLevel == null) return
 

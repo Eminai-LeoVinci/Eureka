@@ -10,13 +10,14 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.StateDefinition
 import net.minecraft.world.level.block.state.properties.BlockStateProperties.POWER
 import net.minecraft.world.level.material.MapColor
-import org.valkyrienskies.core.api.ships.getAttachment
+import net.minecraft.world.level.redstone.Orientation
+import org.valkyrienskies.core.api.attachment.getAttachment
 import org.valkyrienskies.eureka.ship.EurekaShipControl
-import org.valkyrienskies.mod.common.getShipManagingPos
-import org.valkyrienskies.mod.common.getShipObjectManagingPos
+import org.valkyrienskies.mod.common.blockProps
+import org.valkyrienskies.mod.common.getLoadedShipManagingPos
 
 class FloaterBlock : Block(
-    Properties.of().mapColor(MapColor.WOOD)
+    blockProps().mapColor(MapColor.WOOD)
         .sound(SoundType.WOOL).strength(1.0f, 2.0f)
 ) {
     init {
@@ -36,7 +37,7 @@ class FloaterBlock : Block(
 
         val floaterPower = 15 - state.getValue(POWER)
 
-        val ship = level.getShipObjectManagingPos(pos) ?: level.getShipManagingPos(pos) ?: return
+        val ship = level.getLoadedShipManagingPos(pos) ?: return
         EurekaShipControl.getOrCreate(ship).floaters += floaterPower
     }
 
@@ -45,32 +46,29 @@ class FloaterBlock : Block(
         level: Level,
         pos: BlockPos,
         block: Block,
-        fromPos: BlockPos,
+        orientation: Orientation?,
         isMoving: Boolean
     ) {
-        super.neighborChanged(state, level, pos, block, fromPos, isMoving)
+        super.neighborChanged(state, level, pos, block, orientation, isMoving)
 
         if (level as? ServerLevel == null) return
 
         val signal = level.getBestNeighborSignal(pos)
         val currentPower = state.getValue(POWER)
 
-        level.getShipManagingPos(pos)?.getAttachment<EurekaShipControl>()?.let {
+        level.getLoadedShipManagingPos(pos)?.getAttachment<EurekaShipControl>()?.let {
             it.floaters += (currentPower - signal)
         }
 
         level.setBlock(pos, state.setValue(POWER, signal), 2)
     }
 
-    override fun onRemove(state: BlockState, level: Level, pos: BlockPos, newState: BlockState, isMoving: Boolean) {
-        super.onRemove(state, level, pos, newState, isMoving)
-
-        if (level.isClientSide) return
-        level as ServerLevel
+    override fun affectNeighborsAfterRemoval(state: BlockState, level: ServerLevel, pos: BlockPos, isMoving: Boolean) {
+        super.affectNeighborsAfterRemoval(state, level, pos, isMoving)
 
         val floaterPower = 15 - state.getValue(POWER)
 
-        level.getShipManagingPos(pos)?.getAttachment<EurekaShipControl>()?.let {
+        level.getLoadedShipManagingPos(pos)?.getAttachment<EurekaShipControl>()?.let {
             it.floaters -= floaterPower
         }
     }

@@ -10,7 +10,7 @@ import java.util.concurrent.CompletableFuture
 class EurekaBlockTagsProvider(output: FabricDataOutput, registriesFuture: CompletableFuture<HolderLookup.Provider>) :
     FabricTagProvider.BlockTagProvider(output, registriesFuture) {
     override fun addTags(arg: HolderLookup.Provider) {
-        getOrCreateTagBuilder(BlockTags.WOOL)
+        valueLookupBuilder(BlockTags.WOOL)
             .add(EurekaBlocks.BALLOON.get())
             .add(EurekaBlocks.WHITE_BALLOON.get())
             .add(EurekaBlocks.LIGHT_GRAY_BALLOON.get())
@@ -30,7 +30,7 @@ class EurekaBlockTagsProvider(output: FabricDataOutput, registriesFuture: Comple
             .add(EurekaBlocks.BROWN_BALLOON.get())
             .add(EurekaBlocks.FLOATER.get())
 
-        getOrCreateTagBuilder(BlockTags.PLANKS)
+        valueLookupBuilder(BlockTags.PLANKS)
             .add(EurekaBlocks.OAK_SHIP_HELM.get())
             .add(EurekaBlocks.SPRUCE_SHIP_HELM.get())
             .add(EurekaBlocks.BIRCH_SHIP_HELM.get())
@@ -40,7 +40,7 @@ class EurekaBlockTagsProvider(output: FabricDataOutput, registriesFuture: Comple
             .add(EurekaBlocks.CRIMSON_SHIP_HELM.get())
             .add(EurekaBlocks.WARPED_SHIP_HELM.get())
 
-        getOrCreateTagBuilder(BlockTags.MINEABLE_WITH_AXE)
+        valueLookupBuilder(BlockTags.MINEABLE_WITH_AXE)
             .add(EurekaBlocks.OAK_SHIP_HELM.get())
             .add(EurekaBlocks.SPRUCE_SHIP_HELM.get())
             .add(EurekaBlocks.BIRCH_SHIP_HELM.get())
@@ -50,7 +50,7 @@ class EurekaBlockTagsProvider(output: FabricDataOutput, registriesFuture: Comple
             .add(EurekaBlocks.CRIMSON_SHIP_HELM.get())
             .add(EurekaBlocks.WARPED_SHIP_HELM.get())
 
-        getOrCreateTagBuilder(BlockTags.MINEABLE_WITH_PICKAXE)
+        valueLookupBuilder(BlockTags.MINEABLE_WITH_PICKAXE)
             .add(EurekaBlocks.ANCHOR.get())
             .add(EurekaBlocks.ENGINE.get())
             .add(EurekaBlocks.BALLAST.get())

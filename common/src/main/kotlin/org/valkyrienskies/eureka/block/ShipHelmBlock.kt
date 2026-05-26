@@ -25,14 +25,13 @@ import net.minecraft.world.level.pathfinder.PathComputationType
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.shapes.CollisionContext
 import net.minecraft.world.phys.shapes.VoxelShape
-import org.valkyrienskies.core.api.ships.getAttachment
+import org.valkyrienskies.core.api.attachment.getAttachment
 import org.valkyrienskies.eureka.blockentity.ShipHelmBlockEntity
 import org.valkyrienskies.eureka.ship.EurekaShipControl
 import org.valkyrienskies.eureka.util.DirectionalShape
 import org.valkyrienskies.eureka.util.RotShapes
 import org.valkyrienskies.mod.common.ValkyrienSkiesMod
-import org.valkyrienskies.mod.common.getShipManagingPos
-import org.valkyrienskies.mod.common.getShipObjectManagingPos
+import org.valkyrienskies.mod.common.getLoadedShipManagingPos
 
 class ShipHelmBlock(properties: Properties, val woodType: IWoodType) : BaseEntityBlock(properties) {
     val HELM_BASE = RotShapes.box(2.0, 0.0, 2.0, 14.0, 2.0, 14.0)
@@ -50,17 +49,14 @@ class ShipHelmBlock(properties: Properties, val woodType: IWoodType) : BaseEntit
         if (level.isClientSide) return
         level as ServerLevel
 
-        val ship = level.getShipObjectManagingPos(pos) ?: level.getShipManagingPos(pos) ?: return
+        val ship = level.getLoadedShipManagingPos(pos) ?: return
         EurekaShipControl.getOrCreate(ship).helms += 1
     }
 
-    override fun onRemove(state: BlockState, level: Level, pos: BlockPos, newState: BlockState, isMoving: Boolean) {
-        super.onRemove(state, level, pos, newState, isMoving)
+    override fun affectNeighborsAfterRemoval(state: BlockState, level: ServerLevel, pos: BlockPos, isMoving: Boolean) {
+        super.affectNeighborsAfterRemoval(state, level, pos, isMoving)
 
-        if (level.isClientSide) return
-        level as ServerLevel
-
-        level.getShipManagingPos(pos)?.getAttachment<EurekaShipControl>()?.let { control ->
+        level.getLoadedShipManagingPos(pos)?.getAttachment<EurekaShipControl>()?.let { control ->
 
             if (control.helms <= 1 && control.seatedPlayer?.vehicle?.type == ValkyrienSkiesMod.SHIP_MOUNTING_ENTITY_TYPE) {
                 control.seatedPlayer!!.unRide()
@@ -84,7 +80,7 @@ class ShipHelmBlock(properties: Properties, val woodType: IWoodType) : BaseEntit
         return if (player.isSecondaryUseActive) {
             player.openMenu(blockEntity)
             InteractionResult.CONSUME
-        } else if (level.getShipManagingPos(pos) == null) {
+        } else if (level.getLoadedShipManagingPos(pos) == null) {
             player.displayClientMessage(Component.translatable("info.vs_eureka.sneak_to_open_helm"), true)
             InteractionResult.CONSUME
         } else if (blockEntity.sit(player)) {

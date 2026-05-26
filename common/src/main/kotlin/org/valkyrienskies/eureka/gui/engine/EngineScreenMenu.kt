@@ -26,7 +26,7 @@ class EngineScreenMenu(syncId: Int, playerInv: Inventory, val blockEntity: Engin
 
     init {
         // Add the fuel slot
-        addSlot(FuelSlot(container, 0, 80, 57))
+        addSlot(FuelSlot(container, 0, 80, 57, playerInv.player.level().fuelValues()))
 
         // Make inventory
         inventorySlots(::addSlot, playerInv)
@@ -38,8 +38,9 @@ class EngineScreenMenu(syncId: Int, playerInv: Inventory, val blockEntity: Engin
     override fun stillValid(player: Player): Boolean = container.stillValid(player)
 
     override fun quickMoveStack(player: Player, index: Int): ItemStack {
+        val fuelValues = player.level().fuelValues()
         val slot = this.slots[index]
-        if (slot != null && slot.hasItem() && (isBucket(slot.item) || FuelRegistry.INSTANCE.get(slot.item) > 0 )) {
+        if (slot != null && slot.hasItem() && (isBucket(slot.item) || FuelRegistry.INSTANCE.get(slot.item, fuelValues) > 0 )) {
             if (index != 0) {
                 this.moveItemStackTo(slot.item, 0, 1, false)
                 slot.setChanged()

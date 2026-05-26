@@ -1,12 +1,12 @@
 package org.valkyrienskies.eureka.gui.shiphelm
 
-import com.mojang.blaze3d.systems.RenderSystem
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
-import net.minecraft.client.renderer.GameRenderer
+import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
-import net.minecraft.resources.ResourceLocation
+import net.minecraft.resources.Identifier
 import net.minecraft.world.entity.player.Inventory
 import net.minecraft.world.phys.BlockHitResult
 import org.valkyrienskies.core.api.ships.Ship
@@ -76,12 +76,9 @@ class ShipHelmScreen(handler: ShipHelmScreenMenu, playerInventory: Inventory, te
     override fun renderBg(guiGraphics: GuiGraphics, partialTicks: Float, mouseX: Int, mouseY: Int) {
         updateButtons()
 
-        RenderSystem.setShader { GameRenderer.getPositionTexShader() }
-        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
-        RenderSystem.setShaderTexture(0, TEXTURE)
         val x = (width - imageWidth) / 2
         val y = (height - imageHeight) / 2
-        guiGraphics.blit(TEXTURE, x, y, 0, 0, imageWidth, imageHeight)
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, x, y, 0f, 0f, imageWidth, imageHeight, 256, 256)
     }
 
     override fun renderLabels(guiGraphics: GuiGraphics, i: Int, j: Int) {
@@ -95,20 +92,24 @@ class ShipHelmScreen(handler: ShipHelmScreenMenu, playerInventory: Inventory, te
 
         // TODO render stats
         if (ship == null) return
-        ship!!.slug?.let { guiGraphics.drawString(font, it, titleLabelX, titleLabelY, 0x404040, false) }
-        guiGraphics.drawString(font, String.format("%.2f", ship!!.velocity.length()) + "m/s", 8, 25, 0x404040, false)
+        ship!!.slug?.let { guiGraphics.drawString(font, it, titleLabelX, titleLabelY, 0xFF404040.toInt(), false) }
+        guiGraphics.drawString(font, String.format("%.2f", ship!!.velocity.length()) + "m/s", 8, 25, 0xFF404040.toInt(), false)
     }
 
     // mojank doesn't check mouse release for their widgets for some reason
-    override fun mouseReleased(mouseX: Double, mouseY: Double, button: Int): Boolean {
+    override fun mouseReleased(mouseButtonEvent: MouseButtonEvent): Boolean {
         isDragging = false
-        if (getChildAt(mouseX, mouseY).filter { it.mouseReleased(mouseX, mouseY, button) }.isPresent) return true
+        if (getChildAt(mouseButtonEvent.x(), mouseButtonEvent.y())
+                .filter { it.mouseReleased(mouseButtonEvent) }.isPresent
+        ) {
+            return true
+        }
 
-        return super.mouseReleased(mouseX, mouseY, button)
+        return super.mouseReleased(mouseButtonEvent)
     }
 
     companion object { // TEXTURE DATA
-        internal val TEXTURE = ResourceLocation.fromNamespaceAndPath(EurekaMod.MOD_ID, "textures/gui/ship_helm.png")
+        internal val TEXTURE = Identifier.fromNamespaceAndPath(EurekaMod.MOD_ID, "textures/gui/ship_helm.png")
 
         private const val BUTTON_1_X = 10
         private const val BUTTON_1_Y = 73

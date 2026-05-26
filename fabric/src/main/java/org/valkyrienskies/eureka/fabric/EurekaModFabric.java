@@ -6,27 +6,20 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.client.model.loading.v1.ModelLoadingPlugin;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.fabricmc.fabric.api.resource.ResourcePackActivationType;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.valkyrienskies.eureka.EurekaBlockEntities;
-import org.valkyrienskies.eureka.EurekaConfig;
 import org.valkyrienskies.eureka.EurekaItems;
 import org.valkyrienskies.eureka.EurekaMod;
-import org.valkyrienskies.eureka.block.IWoodType;
-import org.valkyrienskies.eureka.block.WoodType;
 import org.valkyrienskies.eureka.blockentity.renderer.ShipHelmBlockEntityRenderer;
-import org.valkyrienskies.eureka.blockentity.renderer.WheelModels;
 import org.valkyrienskies.eureka.fabric.registry.FuelRegistryImpl;
 import org.valkyrienskies.eureka.registry.CreativeTabs;
-import org.valkyrienskies.mod.compat.clothconfig.VSClothConfig;
 import org.valkyrienskies.mod.fabric.common.ValkyrienSkiesModFabric;
 
 public class EurekaModFabric implements ModInitializer {
@@ -51,22 +44,6 @@ public class EurekaModFabric implements ModInitializer {
                 ShipHelmBlockEntityRenderer::new
             );
 
-            ModelLoadingPlugin.register(context -> {
-                for (final IWoodType woodType : WoodType.getEntries()) {
-                    context.addModels(ResourceLocation.fromNamespaceAndPath(
-                            EurekaMod.MOD_ID,
-                            "block/" + woodType.getSerializedName().toLowerCase() + "_ship_helm_wheel"
-                    ));
-                }
-            });
-
-            WheelModels.INSTANCE.setModelGetter(woodType ->
-                    Minecraft.getInstance().getModelManager().getModel(
-                            ResourceLocation.fromNamespaceAndPath(
-                                    EurekaMod.MOD_ID,
-                                    "block/" + woodType.getSerializedName().toLowerCase() + "_ship_helm_wheel"
-                            )));
-
             Registry.register(
                 BuiltInRegistries.CREATIVE_MODE_TAB,
                 EurekaItems.INSTANCE.getTAB(),
@@ -75,7 +52,7 @@ public class EurekaModFabric implements ModInitializer {
 
             ModContainer eureka = FabricLoader.getInstance().getModContainer(EurekaMod.MOD_ID)
                     .orElseThrow(() -> new IllegalStateException("Eureka's ModContainer couldn't be found!"));
-            ResourceLocation packId = ResourceLocation.fromNamespaceAndPath(EurekaMod.MOD_ID, "retro_helms");
+            Identifier packId = Identifier.fromNamespaceAndPath(EurekaMod.MOD_ID, "retro_helms");
             ResourceManagerHelper.registerBuiltinResourcePack(packId, eureka, "Eureka retro helms", ResourcePackActivationType.NORMAL);
         }
     }
@@ -83,10 +60,9 @@ public class EurekaModFabric implements ModInitializer {
     public static class ModMenu implements ModMenuApi {
         @Override
         public ConfigScreenFactory<?> getModConfigScreenFactory() {
-            return (parent) -> VSClothConfig.createConfigScreenFor(
-                parent,
-                EurekaConfig.class
-            );
+            // 1.21.11: VS2 dropped its org.valkyrienskies.mod.compat.clothconfig helper.
+            // No config screen until the cloth-config integration is reinstated.
+            return (parent) -> null;
         }
     }
 }

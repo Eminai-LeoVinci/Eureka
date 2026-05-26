@@ -1,11 +1,9 @@
 package org.valkyrienskies.eureka
 
-import net.minecraft.Util
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Registry
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.core.registries.Registries
-import net.minecraft.util.datafix.fixes.References
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityType
@@ -45,11 +43,9 @@ object EurekaBlockEntities {
     private infix fun <T : BlockEntity> Block.withBE(blockEntity: (BlockPos, BlockState) -> T) = Pair(this, blockEntity)
     private infix fun <T : BlockEntity> Pair<Set<RegistrySupplier<out Block>>, (BlockPos, BlockState) -> T>.byName(name: String): RegistrySupplier<BlockEntityType<T>> =
         BLOCKENTITIES.register(name) {
-            val type = Util.fetchChoiceType(References.BLOCK_ENTITY, name)
-
-            BlockEntityType.Builder.of(
+            BlockEntityType(
                 this.second,
-                *this.first.map { it.get() }.toTypedArray()
-            ).build(type)
+                this.first.map { it.get() }.toSet()
+            )
         }
 }

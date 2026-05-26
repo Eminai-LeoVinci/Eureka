@@ -14,55 +14,55 @@ object EurekaConfig {
     class Server {
 
         @JsonSchema(description = "Movement power per engine when heated fully")
-        val enginePowerLinear: Float = 500000f
+        var enginePowerLinear: Float = 500000f
 
         @JsonSchema(description = "Movement power per engine with minimal heat")
-        val enginePowerLinearMin: Float = 10000f
+        var enginePowerLinearMin: Float = 10000f
 
         @JsonSchema(description = "Turning power per engine when heated fully")
-        val enginePowerAngular = 1.0f
+        var enginePowerAngular = 1.0f
 
         @JsonSchema(description = "Turning power per engine when minimal heat")
-        val enginePowerAngularMin = 0.0f
+        var enginePowerAngularMin = 0.0f
 
         @JsonSchema(description = "The amount of heat a engine loses per tick")
-        val engineHeatLoss = 0.01f
+        var engineHeatLoss = 0.01f
 
         @JsonSchema(description = "The amount of heat a gain per tick (when burning)")
-        val engineHeatGain = 0.03f
+        var engineHeatGain = 0.03f
 
         @JsonSchema(description = "Increases heat gained at low heat level, and increased heat decreases when at high heat and not consuming fuel")
-        val engineHeatChangeExponent = 0.1f
+        var engineHeatChangeExponent = 0.1f
 
         @JsonSchema(description = "Pause fuel consumption and power when block is powered")
-        val engineRedstoneBehaviorPause = false
+        var engineRedstoneBehaviorPause = false
 
         @JsonSchema(description = "Number of Balloons a single engine can power. 0 disables the feature")
-        val maxBalloonsPerEngine = 0
+        var maxBalloonsPerEngine = 0
 
         @JsonSchema(description = "Avoids consuming fuel when heat is 100%")
-        val engineFuelSaving = false
+        var engineFuelSaving = false
 
         @JsonSchema(description = "Increasing this value will result in more items being able to converted to fuel")
-        val engineMinCapacity = 2000
+        var engineMinCapacity = 2000
 
         @JsonSchema(description = "Fuel burn time multiplier")
-        val engineFuelMultiplier = 2f
+        var engineFuelMultiplier = 2f
 
         @JsonSchema(description = "Extra engine power for when having multiple engines per engine")
-        val engineBoost = 0.2
+        var engineBoost = 0.2
 
         @JsonSchema(description = "At what amount of engines the boost will start taking effect")
-        val engineBoostOffset = 2.5
+        var engineBoostOffset = 2.5
 
         @JsonSchema(description = "The final linear boost will be raised to the power of 2, and the result of the delta is multiple by this value")
-        val engineBoostExponentialPower = 0.000001
+        var engineBoostExponentialPower = 0.000001
 
         @JsonSchema(description = "Max speed of a ship with engines (actual max speed varies with engines and mass.)")
-        val maxSpeedFromEngines = 16.0
+        var maxSpeedFromEngines = 24.0
 
         @JsonSchema(description = "Max reverse speed of a ship with engines")
-        val maxReverseSpeedFromEngines = 8.0
+        var maxReverseSpeedFromEngines = 8.0
 
         @JsonSchema(description = "The speed at which the ship stabilizes")
         var stabilizationSpeed = 10.0
@@ -79,6 +79,12 @@ object EurekaConfig {
         // The velocity any ship at least can move at.
         @JsonSchema(description = "The speed a ship with no engines can move at")
         var baseSpeed = 3.0
+
+        @JsonSchema(description = "Forward/backward thrust multiplier for a ship grounded on land, to overcome ground friction. 1 = no assist")
+        var landThrustAssist = 5.33
+
+        @JsonSchema(description = "Forward/backward thrust multiplier for a ship travelling on water. 1 = no assist")
+        var waterThrustAssist = 8.0
 
         // Sensitivity of the up/down impulse buttons.
         // TODO maybe should be moved to VS2 client-side config?
@@ -158,19 +164,19 @@ object EurekaConfig {
         var popSideBalloonChance = 0.3
 
         @JsonSchema(description = "Whether the ship helm assembles diagonally connected blocks or not")
-        val diagonals = true
+        var diagonals = true
 
         @JsonSchema(description = "Weight of ballast when lowest redstone power")
-        val ballastWeight: Double = 10000.0
+        var ballastWeight: Double = 10000.0
 
         @JsonSchema(description = "Weight of ballast when highest redstone power")
-        val ballastNoWeight: Double = 1000.0
+        var ballastNoWeight: Double = 1000.0
 
         @JsonSchema(description = "Whether or not disassembly is permitted")
-        val allowDisassembly = true
+        var allowDisassembly = true
 
         @JsonSchema(description = "Maximum number of blocks allowed in a ship. Set to 0 for no limit")
-        val maxShipBlocks = 32 * 32 * 32
+        var maxShipBlocks = 32 * 32 * 32
 
         // TODO: Remove blockBlacklist
         // Blacklist of blocks that don't get added for ship building

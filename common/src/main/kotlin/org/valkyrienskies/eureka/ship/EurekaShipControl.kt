@@ -8,13 +8,13 @@ import net.minecraft.core.Direction
 import net.minecraft.network.chat.Component
 import net.minecraft.world.entity.player.Player
 import org.joml.*
-import org.valkyrienskies.core.api.VSBeta
+import org.valkyrienskies.core.api.VsBeta
+import org.valkyrienskies.core.api.attachment.getAttachment
+import org.valkyrienskies.core.api.ships.LoadedServerShip
 import org.valkyrienskies.core.api.ships.PhysShip
-import org.valkyrienskies.core.api.ships.ServerShip
 import org.valkyrienskies.core.api.ships.ServerTickListener
-import org.valkyrienskies.core.api.ships.ShipForcesInducer
-import org.valkyrienskies.core.api.ships.getAttachment
-import org.valkyrienskies.core.api.ships.saveAttachment
+import org.valkyrienskies.core.api.ships.ShipPhysicsListener
+import org.valkyrienskies.core.api.world.PhysLevel
 import org.valkyrienskies.eureka.EurekaConfig
 import org.valkyrienskies.mod.api.SeatedControllingPlayer
 import org.valkyrienskies.mod.common.util.toJOMLD
@@ -27,10 +27,10 @@ import kotlin.math.*
     setterVisibility = JsonAutoDetect.Visibility.NONE
 )
 @JsonIgnoreProperties(ignoreUnknown = true)
-class EurekaShipControl : ShipForcesInducer, ServerTickListener {
+class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
 
     @JsonIgnore
-    internal var ship: ServerShip? = null
+    internal var ship: LoadedServerShip? = null
 
     private var extraForceLinear = 0.0
     private var extraForceAngular = 0.0
@@ -81,8 +81,8 @@ class EurekaShipControl : ShipForcesInducer, ServerTickListener {
         }
     }
 
-    @OptIn(VSBeta::class)
-    override fun applyForces(physShip: PhysShip) {
+    @OptIn(VsBeta::class)
+    override fun physTick(physShip: PhysShip, physLevel: PhysLevel) {
         if (helms < 1) {
             // Enable fluid drag if all the helms have been destroyed
             physShip.doFluidDrag = true
@@ -184,8 +184,18 @@ class EurekaShipControl : ShipForcesInducer, ServerTickListener {
             }
         }
 
+        // Forward/back thrust gets a different assist depending on what carries the ship.
+        // Land travel must overcome ground friction; water travel is tuned separately so it
+        // can stay faster than land without the two sharing one knob. A ship with enough
+        // balloon lift to fly keeps the normal, unassisted thrust.
+        val thrustMultiplier = when {
+            balloonForceProvided >= mass * -GRAVITY -> 1.0
+            physShip.liquidOverlap > 0.0 -> EurekaConfig.SERVER.waterThrustAssist
+            else -> EurekaConfig.SERVER.landThrustAssist
+        }
+
         controlData?.let { control ->
-            applyPlayerControl(control, physShip)
+            applyPlayerControl(control, physShip, thrustMultiplier)
             idealUpwardVel = getPlayerUpwardVel(control, mass)
         }
 
@@ -224,7 +234,7 @@ class EurekaShipControl : ShipForcesInducer, ServerTickListener {
         return currentControlData
     }
 
-    private fun applyPlayerControl(control: ControlData, physShip: PhysShip) {
+    private fun applyPlayerControl(control: ControlData, physShip: PhysShip, thrustMultiplier: Double) {
 
         val ship = ship ?: return
         val transform = physShip.transform
@@ -265,11 +275,11 @@ class EurekaShipControl : ShipForcesInducer, ServerTickListener {
 
         physShip.applyInvariantTorque(getPlayerControlledBanking(control, physShip, moiTensor, -idealAlphaY))
 
-        physShip.applyInvariantForce(getPlayerForwardVel(control, physShip))
+        physShip.applyInvariantForce(getPlayerForwardVel(control, physShip).mul(thrustMultiplier))
     }
 
     private fun getPlayerControlledBanking(control: ControlData, physShip: PhysShip, moiTensor: Matrix3dc, strength: Double): Vector3d {
-        val rotationVector = control.seatInDirection.normal.toJOMLD()
+        val rotationVector = control.seatInDirection.unitVec3i.toJOMLD()
         physShip.transform.shipToWorldRotation.transform(rotationVector)
         rotationVector.y = 0.0
         rotationVector.mul(strength * 1.5)
@@ -290,7 +300,7 @@ class EurekaShipControl : ShipForcesInducer, ServerTickListener {
         val vel: Vector3dc = physShip.velocity
 
         // region Player controlled forward and backward thrust
-        val forwardVector = control.seatInDirection.normal.toJOMLD()
+        val forwardVector = control.seatInDirection.unitVec3i.toJOMLD()
         physShip.transform.shipToWorldRotation.transform(forwardVector)
         forwardVector.normalize()
 
@@ -379,7 +389,7 @@ class EurekaShipControl : ShipForcesInducer, ServerTickListener {
 
     private fun deleteIfEmpty() {
         if (helms <= 0 && floaters <= 0 && anchors <= 0 && balloons <= 0) {
-            ship?.saveAttachment<EurekaShipControl>(null)
+            ship?.removeAttachment(EurekaShipControl::class.java)
         }
     }
 
@@ -397,9 +407,9 @@ class EurekaShipControl : ShipForcesInducer, ServerTickListener {
     private fun smoothingATanMax(max: Double, x: Double): Double = smoothingATan(1 / (max * 0.638), x)
 
     companion object {
-        fun getOrCreate(ship: ServerShip): EurekaShipControl {
+        fun getOrCreate(ship: LoadedServerShip): EurekaShipControl {
             return ship.getAttachment<EurekaShipControl>()
-                ?: EurekaShipControl().also { ship.saveAttachment(it) }
+                ?: EurekaShipControl().also { ship.setAttachment(it) }
         }
 
         private const val ALIGN_THRESHOLD = 0.01

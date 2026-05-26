@@ -1,68 +1,24 @@
 package org.valkyrienskies.eureka.gui.engine
 
-import com.mojang.blaze3d.systems.RenderSystem
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
-import net.minecraft.client.renderer.GameRenderer
+import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
-import net.minecraft.resources.ResourceLocation
+import net.minecraft.resources.Identifier
 import net.minecraft.world.entity.player.Inventory
 import org.valkyrienskies.eureka.EurekaMod
 
 class EngineScreen(handler: EngineScreenMenu, playerInventory: Inventory, text: Component) :
     AbstractContainerScreen<EngineScreenMenu>(handler, playerInventory, text) {
 
-    // The texture is 512 so every coord is 2 pixels big
     override fun renderBg(guiGraphics: GuiGraphics, partialTicks: Float, mouseX: Int, mouseY: Int) {
-        RenderSystem.setShader { GameRenderer.getPositionTexShader() }
-        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
-        RenderSystem.setShaderTexture(0, TEXTURE)
         val xP = (width - imageWidth) / 2
         val yP = (height - imageHeight) / 2
-
-        menu as EngineScreenMenu
-
-        guiGraphics.pose().pushPose()
-        // This matrix magic is bcs the texture is 512x512 and is 256x256 mc classic (mojank)
-        guiGraphics.pose().translate(xP.toDouble(), yP.toDouble(), 0.0)
-        guiGraphics.pose().scale(2f, 2f, 2F)
-
-        // Draw the container background
-        val (containerX, containerY) = if (menu.heatLevel > 1)
-            Pair(HEATED_CONTAINER_X, HEATED_CONTAINER_Y)
-        else
-            Pair(CONTAINER_X, CONTAINER_Y)
-
-        guiGraphics.blit(TEXTURE, FIRE_HOLE_X, FIRE_HOLE_Y, containerX, containerY, FIRE_HOLE_WIDTH, FIRE_HOLE_HEIGHT)
-
-        // region COALS
-        // Draw the coal
-        if (menu.fuelLeft != 0) {
-            val t = COAL_MULTI_MAX - ((menu.fuelLeft.toFloat() / menu.fuelTotal.toFloat()) * COAL_MULTI_MAX)
-            fun coal(xC: Int, yC: Int, heightC: Int, mult: Float) {
-                val drop = (t * mult).toInt()
-                val calcY = FIRE_HOLE_HEIGHT - heightC + drop
-                guiGraphics.blit(TEXTURE, FIRE_HOLE_X, FIRE_HOLE_Y + calcY, xC, yC, COAL_WIDTH, heightC)
-            }
-
-            coal(COAL_4_X, COAL_4_Y, COAL_4_HEIGHT, COAL_4_MULT)
-            coal(COAL_3_X, COAL_3_Y, COAL_3_HEIGHT, COAL_3_MULT)
-            coal(COAL_2_X, COAL_2_Y, COAL_2_HEIGHT, COAL_2_MULT)
-            coal(COAL_1_X, COAL_1_Y, COAL_1_HEIGHT, COAL_1_MULT)
-        }
-        // endregion
-
-        // Draw the glass background
-        val (glassX, glassY) = if (menu.heatLevel > 3)
-            Pair(HEATED_GLASS_X, HEATED_GLASS_Y)
-        else
-            Pair(GLASS_X, GLASS_Y)
-
-        guiGraphics.blit(TEXTURE, FIRE_HOLE_X, FIRE_HOLE_Y, glassX, glassY, FIRE_HOLE_WIDTH, FIRE_HOLE_HEIGHT)
-
-        // Draw the inventory
-        guiGraphics.blit(TEXTURE, 0, 0, 0, 0, imageWidth / 2, imageHeight / 2)
-        guiGraphics.pose().popPose()
+        // 1.21.11: RenderSystem.setShader was removed and GuiGraphics.pose() is now a 2D
+        // Matrix3x2fStack (no pushPose/3-arg scale). The engine screen's scaled-texture
+        // compositing (coal animation + heat states) is reduced to a single background blit
+        // until the render layer is ported in the runtime phase.
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, xP, yP, 0f, 0f, imageWidth, imageHeight, 512, 512)
     }
 
     override fun renderLabels(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int) {
@@ -70,7 +26,7 @@ class EngineScreen(handler: EngineScreenMenu, playerInventory: Inventory, text: 
     }
 
     companion object { // TEXTURE DATA
-        internal val TEXTURE = ResourceLocation.fromNamespaceAndPath(EurekaMod.MOD_ID, "textures/gui/engine.png")
+        internal val TEXTURE = Identifier.fromNamespaceAndPath(EurekaMod.MOD_ID, "textures/gui/engine.png")
 
         private const val FIRE_HOLE_X = 10 / 2
         private const val FIRE_HOLE_Y = 8 / 2

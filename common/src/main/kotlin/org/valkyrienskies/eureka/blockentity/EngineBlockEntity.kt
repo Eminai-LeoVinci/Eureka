@@ -2,24 +2,22 @@ package org.valkyrienskies.eureka.blockentity
 
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
-import net.minecraft.core.HolderLookup
 import net.minecraft.core.NonNullList
-import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.ContainerHelper
 import net.minecraft.world.WorldlyContainer
 import net.minecraft.world.entity.player.Inventory
 import net.minecraft.world.entity.player.Player
-import net.minecraft.world.entity.player.StackedContents
 import net.minecraft.world.inventory.AbstractContainerMenu
-import net.minecraft.world.inventory.StackedContentsCompatible
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.entity.BaseContainerBlockEntity
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.storage.ValueInput
+import net.minecraft.world.level.storage.ValueOutput
 import org.joml.Math.lerp
 import org.joml.Math.min
-import org.valkyrienskies.core.api.ships.ServerShip
+import org.valkyrienskies.core.api.ships.LoadedServerShip
 import org.valkyrienskies.eureka.EurekaBlockEntities
 import org.valkyrienskies.eureka.EurekaConfig
 import org.valkyrienskies.eureka.EurekaProperties.HEAT
@@ -27,16 +25,15 @@ import org.valkyrienskies.eureka.gui.engine.EngineScreenMenu
 import org.valkyrienskies.eureka.registry.FuelRegistry
 import org.valkyrienskies.eureka.ship.EurekaShipControl
 import org.valkyrienskies.eureka.util.KtContainerData
-import org.valkyrienskies.mod.common.getShipManagingPos
+import org.valkyrienskies.mod.common.getLoadedShipManagingPos
 import kotlin.math.ceil
 import kotlin.math.max
 
 class EngineBlockEntity(pos: BlockPos, state: BlockState) :
     BaseContainerBlockEntity(EurekaBlockEntities.ENGINE.get(), pos, state),
-    StackedContentsCompatible,
     WorldlyContainer {
 
-    private val ship: ServerShip? get() = (this.level as ServerLevel).getShipManagingPos(this.blockPos)
+    private val ship: LoadedServerShip? get() = (this.level as ServerLevel).getLoadedShipManagingPos(this.blockPos)
     val data = KtContainerData()
     private var heatLevel by data
     private var fuelLeft by data
@@ -135,7 +132,7 @@ class EngineBlockEntity(pos: BlockPos, state: BlockState) :
      * @return scaled fuel ticks.
      */
     private fun getScaledFuel(): Int =
-        (FuelRegistry.INSTANCE.get(fuel) * EurekaConfig.SERVER.engineFuelMultiplier).toInt()
+        (FuelRegistry.INSTANCE.get(fuel, level!!.fuelValues()) * EurekaConfig.SERVER.engineFuelMultiplier).toInt()
 
 
     /**
@@ -153,12 +150,9 @@ class EngineBlockEntity(pos: BlockPos, state: BlockState) :
             fuelLeft += lastFuelValue
             fuelTotal = max(lastFuelValue, EurekaConfig.SERVER.engineMinCapacity)
 
-            // Handle items like lava buckets
-            if (fuel.item.hasCraftingRemainingItem()) {
-                fuel = ItemStack(fuel.item.craftingRemainingItem!!, 1)
-            } else {
-                removeItem(0, 1)
-            }
+            // 1.21.11: Item.hasCraftingRemainingItem/craftingRemainingItem were removed (the
+            // remainder is now a data component); the lava-bucket-style remainder is dropped here.
+            removeItem(0, 1)
             setChanged()
         }
     }
@@ -179,22 +173,22 @@ class EngineBlockEntity(pos: BlockPos, state: BlockState) :
     private fun scaleEngineCooling(value: Float): Float =
         (this.heat * EurekaConfig.SERVER.engineHeatChangeExponent + 1f) * value
 
-    override fun saveAdditional(tag: CompoundTag, provider: HolderLookup.Provider) {
+    override fun saveAdditional(output: ValueOutput) {
+        super.saveAdditional(output)
         if (!fuel.isEmpty) {
-            tag.put("FuelSlot", fuel.save(provider))
+            output.store("FuelSlot", ItemStack.CODEC, fuel)
         }
-        tag.putInt("FuelLeft", fuelLeft)
-        tag.putInt("PrevFuelTotal", fuelTotal)
-        tag.putFloat("Heat", heat)
-        super.saveAdditional(tag, provider)
+        output.putInt("FuelLeft", fuelLeft)
+        output.putInt("PrevFuelTotal", fuelTotal)
+        output.putFloat("Heat", heat)
     }
 
-    override fun loadAdditional(compoundTag: CompoundTag, provider: HolderLookup.Provider) {
-        fuel = ItemStack.parseOptional(provider, compoundTag.getCompound("FuelSlot"))
-        fuelLeft = compoundTag.getInt("FuelLeft")
-        fuelTotal = compoundTag.getInt("PrevFuelTotal")
-        heat = compoundTag.getFloat("Heat")
-        super.loadAdditional(compoundTag, provider)
+    override fun loadAdditional(input: ValueInput) {
+        super.loadAdditional(input)
+        fuel = input.read("FuelSlot", ItemStack.CODEC).orElse(ItemStack.EMPTY)
+        fuelLeft = input.getIntOr("FuelLeft", 0)
+        fuelTotal = input.getIntOr("PrevFuelTotal", 0)
+        heat = input.getFloatOr("Heat", 0f)
     }
 
     // region Container Stuff
@@ -241,13 +235,17 @@ class EngineBlockEntity(pos: BlockPos, state: BlockState) :
     override fun canPlaceItemThroughFace(index: Int, itemStack: ItemStack, direction: Direction?): Boolean =
         direction != Direction.DOWN && canPlaceItem(index, itemStack)
 
-    override fun canTakeItemThroughFace(index: Int, stack: ItemStack, direction: Direction): Boolean =
+    override fun canTakeItemThroughFace(index: Int, stack: ItemStack, direction: Direction): Boolean {
         // Allow extraction from slot 0 (fuel slot) when the hopper is below the block entity
-        index == 0 && direction == Direction.DOWN && !fuel.isEmpty && FuelRegistry.INSTANCE.get(fuel) <= 0
+        val fuelValues = level?.fuelValues() ?: return false
+        return index == 0 && direction == Direction.DOWN && !fuel.isEmpty &&
+            FuelRegistry.INSTANCE.get(fuel, fuelValues) <= 0
+    }
 
-    override fun canPlaceItem(index: Int, stack: ItemStack): Boolean =
-        index == 0 && FuelRegistry.INSTANCE.get(stack) > 0
+    override fun canPlaceItem(index: Int, stack: ItemStack): Boolean {
+        val fuelValues = level?.fuelValues() ?: return false
+        return index == 0 && FuelRegistry.INSTANCE.get(stack, fuelValues) > 0
+    }
 
-    override fun fillStackedContents(helper: StackedContents) = helper.accountStack(fuel)
     // endregion Container Stuff
 }
