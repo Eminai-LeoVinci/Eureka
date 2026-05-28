@@ -25,14 +25,14 @@ import net.minecraft.world.level.pathfinder.PathComputationType
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.shapes.CollisionContext
 import net.minecraft.world.phys.shapes.VoxelShape
-import org.valkyrienskies.core.api.ships.getAttachment
+import org.valkyrienskies.core.api.attachment.getAttachment
 import org.valkyrienskies.eureka.blockentity.ShipHelmBlockEntity
 import org.valkyrienskies.eureka.ship.EurekaShipControl
 import org.valkyrienskies.eureka.util.DirectionalShape
 import org.valkyrienskies.eureka.util.RotShapes
 import org.valkyrienskies.mod.common.ValkyrienSkiesMod
+import org.valkyrienskies.mod.common.getLoadedShipManagingPos
 import org.valkyrienskies.mod.common.getShipManagingPos
-import org.valkyrienskies.mod.common.getShipObjectManagingPos
 
 class ShipHelmBlock(properties: Properties, val woodType: IWoodType) : BaseEntityBlock(properties) {
     val HELM_BASE = RotShapes.box(2.0, 0.0, 2.0, 14.0, 2.0, 14.0)
@@ -50,7 +50,9 @@ class ShipHelmBlock(properties: Properties, val woodType: IWoodType) : BaseEntit
         if (level.isClientSide) return
         level as ServerLevel
 
-        val ship = level.getShipObjectManagingPos(pos) ?: level.getShipManagingPos(pos) ?: return
+        // vs-core 2.5+ requires LoadedServerShip for attachment ops. Unloaded ships pick
+        // up their helm count via the assembly counter pass in ShipHelmBlockEntity.assemble().
+        val ship = level.getLoadedShipManagingPos(pos) ?: return
         EurekaShipControl.getOrCreate(ship).helms += 1
     }
 
@@ -60,7 +62,7 @@ class ShipHelmBlock(properties: Properties, val woodType: IWoodType) : BaseEntit
         if (level.isClientSide) return
         level as ServerLevel
 
-        level.getShipManagingPos(pos)?.getAttachment<EurekaShipControl>()?.let { control ->
+        level.getLoadedShipManagingPos(pos)?.getAttachment<EurekaShipControl>()?.let { control ->
 
             if (control.helms <= 1 && control.seatedPlayer?.vehicle?.type == ValkyrienSkiesMod.SHIP_MOUNTING_ENTITY_TYPE) {
                 control.seatedPlayer!!.unRide()

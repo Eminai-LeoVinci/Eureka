@@ -19,7 +19,7 @@ import net.minecraft.world.level.block.entity.BaseContainerBlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import org.joml.Math.lerp
 import org.joml.Math.min
-import org.valkyrienskies.core.api.ships.ServerShip
+import org.valkyrienskies.core.api.ships.LoadedServerShip
 import org.valkyrienskies.eureka.EurekaBlockEntities
 import org.valkyrienskies.eureka.EurekaConfig
 import org.valkyrienskies.eureka.EurekaProperties.HEAT
@@ -27,7 +27,7 @@ import org.valkyrienskies.eureka.gui.engine.EngineScreenMenu
 import org.valkyrienskies.eureka.registry.FuelRegistry
 import org.valkyrienskies.eureka.ship.EurekaShipControl
 import org.valkyrienskies.eureka.util.KtContainerData
-import org.valkyrienskies.mod.common.getShipManagingPos
+import org.valkyrienskies.mod.common.getLoadedShipManagingPos
 import kotlin.math.ceil
 import kotlin.math.max
 
@@ -36,7 +36,7 @@ class EngineBlockEntity(pos: BlockPos, state: BlockState) :
     StackedContentsCompatible,
     WorldlyContainer {
 
-    private val ship: ServerShip? get() = (this.level as ServerLevel).getShipManagingPos(this.blockPos)
+    private val ship: LoadedServerShip? get() = (this.level as ServerLevel).getLoadedShipManagingPos(this.blockPos)
     val data = KtContainerData()
     private var heatLevel by data
     private var fuelLeft by data

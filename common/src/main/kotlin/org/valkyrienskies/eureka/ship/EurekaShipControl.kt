@@ -8,13 +8,13 @@ import net.minecraft.core.Direction
 import net.minecraft.network.chat.Component
 import net.minecraft.world.entity.player.Player
 import org.joml.*
-import org.valkyrienskies.core.api.VSBeta
+import org.valkyrienskies.core.api.VsBeta
+import org.valkyrienskies.core.api.attachment.getAttachment
+import org.valkyrienskies.core.api.ships.LoadedServerShip
 import org.valkyrienskies.core.api.ships.PhysShip
-import org.valkyrienskies.core.api.ships.ServerShip
 import org.valkyrienskies.core.api.ships.ServerTickListener
-import org.valkyrienskies.core.api.ships.ShipForcesInducer
-import org.valkyrienskies.core.api.ships.getAttachment
-import org.valkyrienskies.core.api.ships.saveAttachment
+import org.valkyrienskies.core.api.ships.ShipPhysicsListener
+import org.valkyrienskies.core.api.world.PhysLevel
 import org.valkyrienskies.eureka.EurekaConfig
 import org.valkyrienskies.mod.api.SeatedControllingPlayer
 import org.valkyrienskies.mod.common.util.toJOMLD
@@ -27,10 +27,10 @@ import kotlin.math.*
     setterVisibility = JsonAutoDetect.Visibility.NONE
 )
 @JsonIgnoreProperties(ignoreUnknown = true)
-class EurekaShipControl : ShipForcesInducer, ServerTickListener {
+class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
 
     @JsonIgnore
-    internal var ship: ServerShip? = null
+    internal var ship: LoadedServerShip? = null
 
     private var extraForceLinear = 0.0
     private var extraForceAngular = 0.0
@@ -81,8 +81,8 @@ class EurekaShipControl : ShipForcesInducer, ServerTickListener {
         }
     }
 
-    @OptIn(VSBeta::class)
-    override fun applyForces(physShip: PhysShip) {
+    @OptIn(VsBeta::class)
+    override fun physTick(physShip: PhysShip, physLevel: PhysLevel) {
         if (helms < 1) {
             // Enable fluid drag if all the helms have been destroyed
             physShip.doFluidDrag = true
@@ -379,7 +379,7 @@ class EurekaShipControl : ShipForcesInducer, ServerTickListener {
 
     private fun deleteIfEmpty() {
         if (helms <= 0 && floaters <= 0 && anchors <= 0 && balloons <= 0) {
-            ship?.saveAttachment<EurekaShipControl>(null)
+            ship?.removeAttachment(EurekaShipControl::class.java)
         }
     }
 
@@ -397,9 +397,9 @@ class EurekaShipControl : ShipForcesInducer, ServerTickListener {
     private fun smoothingATanMax(max: Double, x: Double): Double = smoothingATan(1 / (max * 0.638), x)
 
     companion object {
-        fun getOrCreate(ship: ServerShip): EurekaShipControl {
+        fun getOrCreate(ship: LoadedServerShip): EurekaShipControl {
             return ship.getAttachment<EurekaShipControl>()
-                ?: EurekaShipControl().also { ship.saveAttachment(it) }
+                ?: EurekaShipControl().also { ship.setAttachment(it) }
         }
 
         private const val ALIGN_THRESHOLD = 0.01

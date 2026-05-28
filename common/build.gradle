@@ -19,7 +19,8 @@ dependencies {
     }
 
     compileOnly("org.valkyrienskies.core:api:${rootProject.vs_core_version}")
-    compileOnly("org.valkyrienskies.core:api-game:${rootProject.vs_core_version}")
+    // vs-core 1.1.0+9ca3f9139c (and later) renamed/merged `api-game` -> `internal`.
+    compileOnly("org.valkyrienskies.core:internal:${rootProject.vs_core_version}")
     compileOnly("org.valkyrienskies.core:util:${rootProject.vs_core_version}")
     compileOnly("org.valkyrienskies.core:impl:${rootProject.vs_core_version}")
 

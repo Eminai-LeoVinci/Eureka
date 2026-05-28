@@ -10,10 +10,9 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.StateDefinition
 import net.minecraft.world.level.block.state.properties.BlockStateProperties.POWER
 import net.minecraft.world.level.material.MapColor
-import org.valkyrienskies.core.api.ships.getAttachment
+import org.valkyrienskies.core.api.attachment.getAttachment
 import org.valkyrienskies.eureka.ship.EurekaShipControl
-import org.valkyrienskies.mod.common.getShipManagingPos
-import org.valkyrienskies.mod.common.getShipObjectManagingPos
+import org.valkyrienskies.mod.common.getLoadedShipManagingPos
 
 class FloaterBlock : Block(
     Properties.of().mapColor(MapColor.WOOD)
@@ -36,7 +35,10 @@ class FloaterBlock : Block(
 
         val floaterPower = 15 - state.getValue(POWER)
 
-        val ship = level.getShipObjectManagingPos(pos) ?: level.getShipManagingPos(pos) ?: return
+        // vs-core 2.5+ requires a LoadedServerShip for attachment ops, so only act on
+        // loaded ships here. Unloaded ships will pick up their floater count via the
+        // assembly counter pass in ShipHelmBlockEntity.assemble().
+        val ship = level.getLoadedShipManagingPos(pos) ?: return
         EurekaShipControl.getOrCreate(ship).floaters += floaterPower
     }
 
@@ -55,7 +57,7 @@ class FloaterBlock : Block(
         val signal = level.getBestNeighborSignal(pos)
         val currentPower = state.getValue(POWER)
 
-        level.getShipManagingPos(pos)?.getAttachment<EurekaShipControl>()?.let {
+        level.getLoadedShipManagingPos(pos)?.getAttachment<EurekaShipControl>()?.let {
             it.floaters += (currentPower - signal)
         }
 
@@ -70,7 +72,7 @@ class FloaterBlock : Block(
 
         val floaterPower = 15 - state.getValue(POWER)
 
-        level.getShipManagingPos(pos)?.getAttachment<EurekaShipControl>()?.let {
+        level.getLoadedShipManagingPos(pos)?.getAttachment<EurekaShipControl>()?.let {
             it.floaters -= floaterPower
         }
     }

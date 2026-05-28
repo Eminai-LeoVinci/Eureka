@@ -14,7 +14,7 @@ import org.joml.Vector3d
 import org.valkyrienskies.core.api.ships.ServerShip
 import org.valkyrienskies.core.util.datastructures.DenseBlockPosSet
 import org.valkyrienskies.eureka.EurekaConfig
-import org.valkyrienskies.mod.common.assembly.createNewShipWithBlocks
+import org.valkyrienskies.mod.common.assembly.ShipAssembler as VSShipAssembler
 import org.valkyrienskies.mod.common.executeIf
 import org.valkyrienskies.mod.common.isTickingChunk
 import org.valkyrienskies.mod.common.networking.PacketRestartChunkUpdates
@@ -35,7 +35,12 @@ object ShipAssembler {
         blocks.add(center.toJOML())
         val result = bfs(level, center, blocks, predicate)
         if (result) {
-            return createNewShipWithBlocks(center, blocks, level)
+            // vs-core 2.5+ dropped `createNewShipWithBlocks` (which took a DenseBlockPosSet
+            // directly). The replacement is VSShipAssembler.assembleToShip which takes a
+            // Set<BlockPos>, so materialize the dense set into a HashSet before passing it in.
+            val blockPositions = HashSet<BlockPos>()
+            blocks.forEach { x, y, z -> blockPositions.add(BlockPos(x, y, z)) }
+            return VSShipAssembler.assembleToShip(level, blockPositions, 1.0)
         } else {
             return null
         }

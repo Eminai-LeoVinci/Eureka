@@ -10,11 +10,10 @@ import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.BlockHitResult
-import org.valkyrienskies.core.api.ships.getAttachment
+import org.valkyrienskies.core.api.attachment.getAttachment
 import org.valkyrienskies.eureka.EurekaConfig
 import org.valkyrienskies.eureka.ship.EurekaShipControl
-import org.valkyrienskies.mod.common.getShipManagingPos
-import org.valkyrienskies.mod.common.getShipObjectManagingPos
+import org.valkyrienskies.mod.common.getLoadedShipManagingPos
 
 class BalloonBlock(properties: Properties) : Block(properties) {
 
@@ -28,7 +27,9 @@ class BalloonBlock(properties: Properties) : Block(properties) {
         if (level.isClientSide) return
         level as ServerLevel
 
-        val ship = level.getShipObjectManagingPos(pos) ?: level.getShipManagingPos(pos) ?: return
+        // vs-core 2.5+ requires LoadedServerShip for attachment ops. Unloaded ships pick
+        // up their balloon count via the assembly counter pass in ShipHelmBlockEntity.assemble().
+        val ship = level.getLoadedShipManagingPos(pos) ?: return
         EurekaShipControl.getOrCreate(ship).balloons += 1
     }
 
@@ -38,7 +39,7 @@ class BalloonBlock(properties: Properties) : Block(properties) {
         if (level.isClientSide) return
         level as ServerLevel
 
-        level.getShipManagingPos(pos)?.getAttachment<EurekaShipControl>()?.let {
+        level.getLoadedShipManagingPos(pos)?.getAttachment<EurekaShipControl>()?.let {
             it.balloons -= 1
         }
     }

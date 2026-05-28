@@ -16,12 +16,11 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties
 import net.minecraft.world.level.material.MapColor
 import net.minecraft.world.phys.shapes.CollisionContext
 import net.minecraft.world.phys.shapes.VoxelShape
-import org.valkyrienskies.core.api.ships.getAttachment
+import org.valkyrienskies.core.api.attachment.getAttachment
 import org.valkyrienskies.eureka.ship.EurekaShipControl
 import org.valkyrienskies.eureka.util.DirectionalShape
 import org.valkyrienskies.eureka.util.RotShapes
-import org.valkyrienskies.mod.common.getShipManagingPos
-import org.valkyrienskies.mod.common.getShipObjectManagingPos
+import org.valkyrienskies.mod.common.getLoadedShipManagingPos
 
 class AnchorBlock :
     HorizontalDirectionalBlock(Properties.of().mapColor(MapColor.METAL).strength(5.0f, 6.0f).sound(SoundType.ANVIL)) {
@@ -84,7 +83,9 @@ class AnchorBlock :
 
         val bl = state.getValue(BlockStateProperties.POWERED)
 
-        val ship = level.getShipObjectManagingPos(pos) ?: level.getShipManagingPos(pos) ?: return
+        // vs-core 2.5+ requires LoadedServerShip for attachment ops. Unloaded ships pick
+        // up their anchor count via the assembly counter pass in ShipHelmBlockEntity.assemble().
+        val ship = level.getLoadedShipManagingPos(pos) ?: return
         val attachment = EurekaShipControl.getOrCreate(ship)
 
         attachment.anchors += 1
@@ -99,7 +100,7 @@ class AnchorBlock :
 
         val bl = state.getValue(BlockStateProperties.POWERED)
 
-        level.getShipManagingPos(pos)?.getAttachment<EurekaShipControl>()?.let {
+        level.getLoadedShipManagingPos(pos)?.getAttachment<EurekaShipControl>()?.let {
             it.anchors -= 1
             it.anchorsActive -= if (bl) 1 else 0
         }

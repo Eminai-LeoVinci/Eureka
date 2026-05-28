@@ -47,6 +47,9 @@ pluginManagement {
 
 include("common")
 include("fabric")
-include("forge")
+// Forge subproject removed for the 1.21.1 td-additions port. The VS2 we depend on
+// (2.4.12+) no longer publishes a `valkyrienskies-1-21-1-forge` artifact -- only
+// `-fabric` and `-neoforge`. Restore this line if a VS2 build with forge appears.
+// include("forge")
 
 rootProject.name = "vs-eureka-mod"

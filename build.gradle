@@ -117,6 +117,9 @@ allprojects {
                 }
             }
         }
+        // Required for ForgeConfigAPIPort, which VS2's fabric module pulls transitively
+        // (see VS2 build.gradle - this is the same maven they declare for fcap_version).
+        maven { url = "https://raw.githubusercontent.com/Fuzss/modresources/main/maven/" }
     }
 
     tasks.withType(JavaCompile) {
