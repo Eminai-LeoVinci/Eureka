@@ -84,8 +84,21 @@ class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
             else
                 newShape.max(Axis.Y)
         }
+        // Standing-helmsman foot leveling: the rider stands centred on the block in front of the
+        // helm, so their feet rest on that block's floor (newPos.below()). If that floor sits
+        // lower than the block the helm is placed on -- e.g. a bottom slab against a full-block
+        // deck -- drop the seat by the difference so the feet meet the lower floor instead of
+        // hovering. Capped at half a block; a flush floor, or a gap with nothing solid to stand
+        // on, leaves the rider at the normal deck height.
+        val deckTopY = floorTopWorldY(level, blockPos.below())
+        val frontFloorTopY = floorTopWorldY(level, newPos.below())
+        val standDrop = if (deckTopY != null && frontFloorTopY != null)
+            (deckTopY - frontFloorTopY).coerceIn(0.0, 0.5)
+        else
+            0.0
+
         val entity = ValkyrienSkiesMod.SHIP_MOUNTING_ENTITY_TYPE.create(level, EntitySpawnReason.MOB_SUMMONED)!!.apply {
-            val seatEntityPos: Vector3dc = Vector3d(newPos.x + .5, (newPos.y - .5) + height, newPos.z + .5)
+            val seatEntityPos: Vector3dc = Vector3d(newPos.x + .5, (newPos.y - .5) + height - standDrop, newPos.z + .5)
             snapTo(seatEntityPos.x(), seatEntityPos.y(), seatEntityPos.z(), yRot, xRot)
 
             lookAt(
@@ -98,6 +111,17 @@ class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
 
         level.addFreshEntityWithPassengers(entity)
         return entity
+    }
+
+    // World-space Y of the top surface of the block at [pos], or null if there is nothing solid
+    // there to stand on (air / empty shape). Used to level the standing helmsman onto the floor
+    // in front of the helm.
+    private fun floorTopWorldY(level: ServerLevel, pos: BlockPos): Double? {
+        val state = level.getBlockState(pos)
+        if (state.isAir) return null
+        val shape = state.getShape(level, pos)
+        if (shape.isEmpty) return null
+        return pos.y + shape.max(Axis.Y)
     }
 
     fun startRiding(player: Player, force: Boolean, blockPos: BlockPos, state: BlockState, level: ServerLevel): Boolean {
