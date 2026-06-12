@@ -10,7 +10,6 @@ import net.minecraft.client.renderer.state.CameraRenderState
 import net.minecraft.client.renderer.texture.OverlayTexture
 import net.minecraft.world.level.block.state.properties.BlockStateProperties
 import net.minecraft.world.phys.Vec3
-import org.joml.AxisAngle4f
 import org.joml.Quaternionf
 import org.valkyrienskies.eureka.EurekaBlocks
 import org.valkyrienskies.eureka.block.ShipHelmBlock
@@ -28,6 +27,10 @@ class ShipHelmBlockEntityRenderer(ctx: BlockEntityRendererProvider.Context) :
     }
 
     override fun createRenderState(): ShipHelmRenderState = ShipHelmRenderState()
+
+    // Reused across submits (render thread only): mulPose reads the quaternion without retaining
+    // it, and submit runs per helm per frame.
+    private val scratchRotation = Quaternionf()
 
     override fun extractRenderState(
         blockEntity: ShipHelmBlockEntity,
@@ -58,21 +61,17 @@ class ShipHelmBlockEntityRenderer(ctx: BlockEntityRendererProvider.Context) :
         poseStack.translate(0.5, 0.60, 0.5)
         // Rotate the wheel to face the helm's direction.
         poseStack.mulPose(
-            Quaternionf(
-                AxisAngle4f(
-                    (-state.blockState.getValue(BlockStateProperties.HORIZONTAL_FACING)
-                        .toYRot() * Math.PI / 180.0).toFloat(),
-                    0.0f, 1.0f, 0.0f
-                )
+            scratchRotation.setAngleAxis(
+                (-state.blockState.getValue(BlockStateProperties.HORIZONTAL_FACING)
+                    .toYRot() * Math.PI / 180.0).toFloat(),
+                0.0f, 1.0f, 0.0f
             )
         )
         // Push the wheel out from the base along the facing axis.
         poseStack.translate(0.0, 0.0, 0.19)
         // Spin the wheel with the ship's angular velocity.
         poseStack.mulPose(
-            Quaternionf(
-                AxisAngle4f(state.wheelRotation / 20f * Math.PI.toFloat(), 0.0f, 0.0f, 1.0f)
-            )
+            scratchRotation.setAngleAxis(state.wheelRotation / 20f * Math.PI.toFloat(), 0.0f, 0.0f, 1.0f)
         )
         // The wheel model isn't centred on its own origin.
         poseStack.translate(-0.5, -0.625, -0.25)
