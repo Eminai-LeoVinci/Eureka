@@ -7,6 +7,11 @@ import org.valkyrienskies.eureka.EurekaConfig
 import kotlin.math.atan
 import kotlin.math.max
 
+// World-up is never mutated (angle/cross read it only) — shared constant instead of a fresh
+// Vector3d per stabilize call. Everything handed to applyInvariantTorque/Force stays freshly
+// allocated: vs-core queues those by reference.
+private val WORLD_UP: Vector3dc = Vector3d(0.0, 1.0, 0.0)
+
 /** Returns the magnitude of the linear anti-velocity (braking) force applied, or 0 if [linear] is false. */
 fun stabilize(
     ship: PhysShip,
@@ -17,13 +22,12 @@ fun stabilize(
     yaw: Boolean
 ): Double {
     val shipUp = Vector3d(0.0, 1.0, 0.0)
-    val worldUp = Vector3d(0.0, 1.0, 0.0)
     ship.transform.shipToWorldRotation.transform(shipUp)
 
-    val angleBetween = shipUp.angle(worldUp)
+    val angleBetween = shipUp.angle(WORLD_UP)
     val idealAngularAcceleration = Vector3d()
     if (angleBetween > .01) {
-        val stabilizationRotationAxisNormalized = shipUp.cross(worldUp, Vector3d()).normalize()
+        val stabilizationRotationAxisNormalized = shipUp.cross(WORLD_UP, Vector3d()).normalize()
         idealAngularAcceleration.add(
             stabilizationRotationAxisNormalized.mul(
                 angleBetween,

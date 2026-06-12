@@ -50,6 +50,8 @@ import org.valkyrienskies.mod.util.logger
 val ASSEMBLE_BLACKLIST: TagKey<Block> =
     TagKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath(EurekaMod.MOD_ID, "assemble_blacklist"))
 
+private const val ORPHAN_SCAN_INTERVAL_TICKS = 20
+
 class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
     BlockEntity(EurekaBlockEntities.SHIP_HELM.get(), pos, state), MenuProvider {
 
@@ -59,6 +61,7 @@ class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
     val assembled get() = ship != null
     val aligning get() = control?.aligning ?: false
     private var shouldDisassembleWhenPossible = false
+    private var orphanScanCooldown = 0
 
     override fun createMenu(id: Int, playerInventory: Inventory, player: Player): AbstractContainerMenu {
         return ShipHelmScreenMenu(id, playerInventory, this)
@@ -146,10 +149,14 @@ class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
     }
 
     fun tick() {
-        if (shouldDisassembleWhenPossible && ship?.getAttachment<EurekaShipControl>()?.canDisassemble == true) {
+        // One shipyard lookup per tick: the [ship]/[control] getters walk the loaded-ship index
+        // on every call, and this tick used to do that two or three times.
+        val curShip = ship
+        val curControl = curShip?.getAttachment(EurekaShipControl::class.java)
+        if (shouldDisassembleWhenPossible && curControl?.canDisassemble == true) {
             this.disassemble()
         }
-        control?.ship = ship
+        curControl?.ship = curShip
 
         // The ShipMountingEntity seat does not tick server-side: shipyard chunks are only
         // promoted to BLOCK_TICKING (see VS2 MixinChunkHolder), never ENTITY_TICKING, so the
@@ -159,16 +166,21 @@ class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
         if (lvl is ServerLevel) {
             // A world reload recreates this block entity with an empty [seats] list, but the
             // ShipMountingEntity seat (with its rider) was persisted. Re-adopt that orphaned
-            // seat so the dismount loop below still works after a reload.
+            // seat so the dismount loop below still works after a reload. Orphans only appear
+            // right after a reload or a late player join, so probe at most once a second —
+            // every unmanned helm hits this branch every tick otherwise.
             if (seats.isEmpty()) {
-                val seatBox = AABB(blockPos.relative(blockState.getValue(HORIZONTAL_FACING))).inflate(0.5)
-                for (player in lvl.players()) {
-                    val vehicle = player.vehicle
-                    if (vehicle is ShipMountingEntity && vehicle.isAlive &&
-                        seatBox.contains(vehicle.x, vehicle.y, vehicle.z)
-                    ) {
-                        vehicle.isController = true
-                        seats.add(vehicle)
+                if (--orphanScanCooldown <= 0) {
+                    orphanScanCooldown = ORPHAN_SCAN_INTERVAL_TICKS
+                    val seatBox = AABB(blockPos.relative(blockState.getValue(HORIZONTAL_FACING))).inflate(0.5)
+                    for (player in lvl.players()) {
+                        val vehicle = player.vehicle
+                        if (vehicle is ShipMountingEntity && vehicle.isAlive &&
+                            seatBox.contains(vehicle.x, vehicle.y, vehicle.z)
+                        ) {
+                            vehicle.isController = true
+                            seats.add(vehicle)
+                        }
                     }
                 }
             }
@@ -182,7 +194,6 @@ class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
                     iter.remove()
                 } else if (rider is Player && rider.isShiftKeyDown) {
                     rider.stopRiding()
-                    val curShip = ship
                     if (curShip != null && rider is ServerPlayer) {
                         val inWorld = curShip.shipToWorld.transformPosition(
                             Vector3d(seat.x, seat.y, seat.z)
@@ -206,7 +217,6 @@ class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
                     // Vanilla EntityDragger explicitly skips mounted entities, so it can't
                     // close this gap either. With the per-tick sync the dismount teleport
                     // becomes a no-op (rider is already at the seat's world pos).
-                    val curShip = ship
                     if (curShip != null) {
                         val worldPos = curShip.shipToWorld.transformPosition(
                             Vector3d(seat.x, seat.y, seat.z)

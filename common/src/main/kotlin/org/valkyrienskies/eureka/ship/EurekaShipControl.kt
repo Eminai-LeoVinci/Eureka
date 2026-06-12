@@ -61,6 +61,15 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
     @JsonIgnore
     var oldSpeed = 0.0
 
+    // Scratch objects reused across phys ticks (fieldVisibility=ANY would otherwise serialize
+    // them). Only intermediates live here — every vector handed to applyInvariantForce/Torque
+    // stays freshly allocated because vs-core queues those by reference.
+    @JsonIgnore
+    private val scratchInvRotation = Quaterniond()
+
+    @JsonIgnore
+    private val scratchAxisAngle = AxisAngle4d()
+
     private data class ControlData(
         val seatInDirection: Direction,
         var forwardImpulse: Float = 0.0f,
@@ -114,8 +123,8 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
 
         // region Aligning
 
-        val invRotation = physShip.transform.shipToWorldRotation.invert(Quaterniond())
-        val invRotationAxisAngle = AxisAngle4d(invRotation)
+        val invRotation = physShip.transform.shipToWorldRotation.invert(scratchInvRotation)
+        val invRotationAxisAngle = scratchAxisAngle.set(invRotation)
         // Floor makes a number 0 to 3, which corresponds to direction
         val alignTarget = floor((invRotationAxisAngle.angle / (PI * 0.5)) + 4.5).toInt() % 4
         angleUntilAligned = (alignTarget.toDouble() * (0.5 * PI)) - invRotationAxisAngle.angle

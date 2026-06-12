@@ -97,8 +97,9 @@ class EngineBlockEntity(pos: BlockPos, state: BlockState) :
         }
 
         if (heat > 0) {
+            // single shipyard lookup per tick (the getter walks the loaded-ship index each call)
             val eurekaShipControl = ship?.getAttachment(EurekaShipControl::class.java)
-            if (ship != null && eurekaShipControl != null) {
+            if (eurekaShipControl != null) {
                 // Avoid fluctuations in speed
                 var effectiveHeat = 1f
                 if (heat < maxEffectiveFuel) {
