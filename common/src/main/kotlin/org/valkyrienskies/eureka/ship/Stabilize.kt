@@ -7,6 +7,7 @@ import org.valkyrienskies.eureka.EurekaConfig
 import kotlin.math.atan
 import kotlin.math.max
 
+/** Returns the magnitude of the linear anti-velocity (braking) force applied, or 0 if [linear] is false. */
 fun stabilize(
     ship: PhysShip,
     omega: Vector3dc,
@@ -14,7 +15,7 @@ fun stabilize(
     forces: PhysShip,
     linear: Boolean,
     yaw: Boolean
-) {
+): Double {
     val shipUp = Vector3d(0.0, 1.0, 0.0)
     val worldUp = Vector3d(0.0, 1.0, 0.0)
     ship.transform.shipToWorldRotation.transform(shipUp)
@@ -63,7 +64,9 @@ fun stabilize(
 
         idealVelocity.mul(ship.mass * (10 - EurekaConfig.SERVER.antiVelocityMassRelevance))
         forces.applyInvariantForce(idealVelocity)
+        return idealVelocity.length()
     }
+    return 0.0
 }
 
 private fun smoothingATan(smoothing: Double, x: Double): Double = atan(x * smoothing) / smoothing
