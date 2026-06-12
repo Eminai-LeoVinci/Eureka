@@ -18,7 +18,6 @@ import org.valkyrienskies.core.api.world.PhysLevel
 import org.valkyrienskies.eureka.EurekaConfig
 import org.valkyrienskies.mod.api.SeatedControllingPlayer
 import org.valkyrienskies.mod.common.util.toJOMLD
-import org.valkyrienskies.mod.util.logger
 import kotlin.math.*
 
 @JsonAutoDetect(
@@ -408,8 +407,6 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
     private fun smoothingATanMax(max: Double, x: Double): Double = smoothingATan(1 / (max * 0.638), x)
 
     companion object {
-        private val logger by logger()
-
         fun getOrCreate(ship: LoadedServerShip): EurekaShipControl {
             return ship.getAttachment<EurekaShipControl>()
                 ?: EurekaShipControl().also { ship.setAttachment(it) }

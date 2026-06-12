@@ -339,9 +339,6 @@ class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
             return true
         }
 
-        // val seat = spawnSeat(blockPos, blockState, level as ServerLevel)
-        // control?.seatedPlayer = player
-        // return player.startRiding(seat, force)
         return startRiding(player, force, blockPos, blockState, level as ServerLevel)
     }
     private val logger by logger()
