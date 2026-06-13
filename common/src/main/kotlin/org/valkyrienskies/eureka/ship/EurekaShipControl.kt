@@ -431,11 +431,12 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
 
         private const val ALIGN_THRESHOLD = 0.01
         private const val DISASSEMBLE_THRESHOLD = 0.02
-        // balloonBuoyancyMultiplier scales every balloon-lift consumer coherently: the physTick
-        // lift budget, the ascend-speed bonus, and the airborne/thrust-assist check. 0 = balloons
-        // provide no lift at all (debug lever for "ship hovers above the water" investigations).
+        // balloonLiftMultiplier scales every balloon-lift consumer coherently: the physTick lift
+        // budget, the ascend-speed bonus, and the airborne/thrust-assist check. 0 = balloons provide
+        // no lift at all (debug lever for "ship hovers above the water" investigations). This is
+        // flight lift, NOT water buoyancy -- the latter is VS2's buoyantFactor (floaters/air pockets).
         private val forcePerBalloon
-            get() = EurekaConfig.SERVER.massPerBalloon * -GRAVITY * EurekaConfig.SERVER.balloonBuoyancyMultiplier
+            get() = EurekaConfig.SERVER.massPerBalloon * -GRAVITY * EurekaConfig.SERVER.balloonLiftMultiplier
 
         private const val GRAVITY = -10.0
     }
