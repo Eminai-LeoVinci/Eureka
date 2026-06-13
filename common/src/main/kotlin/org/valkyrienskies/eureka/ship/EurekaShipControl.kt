@@ -197,15 +197,18 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
 
         var idealUpwardVel = Vector3d(0.0, 0.0, 0.0)
 
-
+        var liveControl: ControlData? = null
         if (validPlayer) {
             val player = controllingPlayer!!
 
-            val currentControlData = getControlData(player)
+            liveControl = getControlData(player)
 
             if (!isCruising) {
-                // only take the latest control data if the player is not cruising
-                controlData = currentControlData
+                // Only freeze the control while NOT cruising. On the tick cruise turns on this is
+                // skipped, so controlData keeps the input the player held at activation (the logged
+                // course + direction). getPlayerForwardVel additionally freezes oldSpeed while
+                // cruising, so the activation SPEED is held too.
+                controlData = liveControl
             }
 
             wasCruisePressed = player.cruise
@@ -227,15 +230,40 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
             else -> EurekaConfig.SERVER.landThrustAssist
         }
 
-        controlData?.let { control ->
+        // While cruising, the captured input (controlData) holds the forward DIRECTION, and the frozen
+        // oldSpeed in getPlayerForwardVel holds the activation speed -- so "left alone" keeps the
+        // logged course (a held turn circles). But turning and elevation stay LIVE so a mounted pilot
+        // can still steer and change depth without dropping cruise: a live turn overrides the logged
+        // turn (releasing it falls back to the logged turn), and live ascend/descend works through.
+        // Forward thrust ignores these overrides (it uses seat facing + frozen oldSpeed), so steering
+        // simply rotates the held velocity vector.
+        val effective = if (isCruising) {
+            controlData?.let { frozen ->
+                ControlData(
+                    frozen.seatInDirection,
+                    frozen.forwardImpulse,
+                    if (liveControl != null && liveControl.leftImpulse != 0.0f) liveControl.leftImpulse else frozen.leftImpulse,
+                    liveControl?.upImpulse ?: frozen.upImpulse,
+                    frozen.sprintOn
+                )
+            }
+        } else {
+            controlData
+        }
+
+        // True whenever the pilot is actively pressing ascend/descend -- live even while cruising.
+        val verticalInputActive = (effective?.upImpulse ?: 0.0f) != 0.0f
+
+        effective?.let { control ->
             applyPlayerControl(control, physShip, thrustMultiplier)
             idealUpwardVel = getPlayerUpwardVel(control, mass)
         }
 
         // region Elevation
         if (holdEngaged) {
-            // Cruise counts as "hands off" -> hold; otherwise an active up/down key drives a new depth.
-            val verticalInputActive = !isCruising && (controlData?.upImpulse ?: 0.0f) != 0.0f
+            // verticalInputActive (computed above) is true whenever the pilot actively presses
+            // ascend/descend -- including while cruising -- so cruise holds the depth only until you
+            // press a key, and ascend/descend never drops cruise.
             applyWaterAltitudeHold(physShip, idealUpwardVel, vel, mass, verticalInputActive)
         } else {
             val idealUpwardForce = (idealUpwardVel.y() - vel.y() - (GRAVITY / EurekaConfig.SERVER.elevationSnappiness)) *
@@ -291,16 +319,19 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
         val currentControlData = ControlData.create(player)
 
         if (!wasCruisePressed && player.cruise) {
-            // the player pressed the cruise button
+            // the player pressed the cruise button -> toggle on/off
             isCruising = !isCruising
             showCruiseStatus()
-        } else if (!player.cruise && isCruising &&
-            (player.leftImpulse != 0.0f || player.sprintOn || player.upImpulse != 0.0f || player.forwardImpulse != 0.0f) &&
-            currentControlData != controlData
-        ) {
-            // The player pressed another button
-            isCruising = false
-            showCruiseStatus()
+        } else if (isCruising && !player.cruise) {
+            // Cruise is broken ONLY by the OPPOSITE forward/back input (reverse cancels a forward
+            // cruise; forward cancels a reverse cruise) or the cruise toggle above. Turning,
+            // ascend/descend, and sprint are all allowed live and never drop cruise.
+            val cruiseFwd = controlData?.forwardImpulse ?: 0.0f
+            val liveFwd = currentControlData.forwardImpulse
+            if (cruiseFwd != 0.0f && liveFwd != 0.0f && (liveFwd > 0.0f) != (cruiseFwd > 0.0f)) {
+                isCruising = false
+                showCruiseStatus()
+            }
         }
 
         return currentControlData
@@ -381,7 +412,12 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
             physShip.mass * EurekaConfig.SERVER.linearMassScaling + EurekaConfig.SERVER.linearBaseMass
         )
 
-        oldSpeed = oldSpeed * (1 - s) + control.forwardImpulse.toDouble() * s // from -1 to 1.
+        // While cruising, freeze the smoothed throttle so the ship holds the speed it had at
+        // activation instead of ramping to the impulse's max ("the moment you activate, the speed is
+        // set"). Steering still rotates this held velocity because forwardVector uses the live heading.
+        if (!isCruising) {
+            oldSpeed = oldSpeed * (1 - s) + control.forwardImpulse.toDouble() * s // from -1 to 1.
+        }
         var speed = oldSpeed * EurekaConfig.SERVER.linearCasualSpeed / 3 // 1 unit -> 3m/s
 
         if (extraForceLinear != 0.0) {
