@@ -109,6 +109,12 @@ object EurekaConfig {
         @JsonSchema(description = "Amount of mass in kg a balloon can lift")
         var massPerBalloon = 5000.0
 
+        @JsonSchema(
+            description = "Multiplier on balloon lift force. 1 = normal lift, 0 = balloons provide no lift " +
+                "(floaters are separate and unaffected; see floaterBuoyantFactorPerKg)"
+        )
+        var balloonBuoyancyMultiplier = 1.0
+
         // The amount of speed that the ship can move at when the left/right impulse button is held down.
         @JsonSchema(description = "The maximum linear velocity at any point on the ship caused by helm torque")
         var turnSpeed = 3.0

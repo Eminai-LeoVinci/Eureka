@@ -217,7 +217,12 @@ object ShipAssembler {
     }
 
     private fun directions(center: BlockPos, lambda: (BlockPos) -> Unit) {
-        if (!EurekaConfig.SERVER.diagonals) Direction.entries.forEach { lambda(center.relative(it)) }
+        // diagonals=false means 6-connectivity ONLY; without this return the 26-neighbor loop
+        // below always ran too, making the toggle a no-op (bug inherited from upstream).
+        if (!EurekaConfig.SERVER.diagonals) {
+            Direction.entries.forEach { lambda(center.relative(it)) }
+            return
+        }
         for (x in -1..1) {
             for (y in -1..1) {
                 for (z in -1..1) {

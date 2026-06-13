@@ -332,6 +332,14 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
             } else {
                 smoothingATanMax(EurekaConfig.SERVER.maxSpeedFromEngines, extraForceLinear * oldSpeed)
             }
+
+            // Engine heat drain: track how much of the engine power is being used this phys tick
+            // (full when sprinting, else throttle fraction -- oldSpeed is the smoothed forward
+            // impulse, -1..1). onServerTick converts the accumulated total into `consumed`, which
+            // EngineBlockEntity subtracts from its heat. Upstream removed its equivalent line in
+            // a2f1f7b ("Fixed ships flying way too fast"), silently making heat drain a no-op;
+            // this restores the intended fuel-burn feedback loop.
+            physConsumption += if (control.sprintOn) 1f else min(abs(oldSpeed), 1.0).toFloat()
         }
 
         forwardVector.mul(speed)
@@ -423,7 +431,11 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
 
         private const val ALIGN_THRESHOLD = 0.01
         private const val DISASSEMBLE_THRESHOLD = 0.02
-        private val forcePerBalloon get() = EurekaConfig.SERVER.massPerBalloon * -GRAVITY
+        // balloonBuoyancyMultiplier scales every balloon-lift consumer coherently: the physTick
+        // lift budget, the ascend-speed bonus, and the airborne/thrust-assist check. 0 = balloons
+        // provide no lift at all (debug lever for "ship hovers above the water" investigations).
+        private val forcePerBalloon
+            get() = EurekaConfig.SERVER.massPerBalloon * -GRAVITY * EurekaConfig.SERVER.balloonBuoyancyMultiplier
 
         private const val GRAVITY = -10.0
     }
