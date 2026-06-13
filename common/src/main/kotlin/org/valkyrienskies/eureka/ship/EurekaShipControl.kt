@@ -70,6 +70,17 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
     @JsonIgnore
     private val scratchAxisAngle = AxisAngle4d()
 
+    // Water altitude-hold state. Transient (re-latches from the ship's current Y on load): while a
+    // hybrid ship (floaters + balloons) has its keel in water, the vertical axis is pinned to
+    // holdTargetY instead of letting balloon lift float it back above the surface. holdEngaged adds
+    // hysteresis so surface chop doesn't flicker the mode on and off. Both touched only from physTick
+    // (physics thread, sequential per ship), so no synchronization is needed.
+    @JsonIgnore
+    private var holdTargetY: Double? = null
+
+    @JsonIgnore
+    private var holdEngaged = false
+
     private data class ControlData(
         val seatInDirection: Direction,
         var forwardImpulse: Float = 0.0f,
@@ -114,12 +125,25 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
             )
         }
 
+        // Water altitude-hold engagement: a hybrid ship (floaters + balloons) whose keel is in water
+        // holds its Y instead of letting balloon lift float it back above the surface. Hysteresis on
+        // liquidOverlap (need > min to engage, but only a full clear of the water to release) keeps
+        // surface chop from flickering the mode. liquidOverlap is the submerged fraction (0..1).
+        holdEngaged = EurekaConfig.SERVER.enableWaterAltitudeHold && !disassembling && !anchored &&
+            floaters > 0 && balloons > 0 && (
+            physShip.liquidOverlap > EurekaConfig.SERVER.waterAltitudeHoldMinOverlap ||
+                (holdEngaged && physShip.liquidOverlap > 0.0)
+            )
+        if (!holdEngaged) holdTargetY = null
+
         val buoyantFactorPerFloater = min(
             EurekaConfig.SERVER.floaterBuoyantFactorPerKg / 15.0 / mass,
             EurekaConfig.SERVER.maxFloaterBuoyantFactor
         )
 
-        physShip.buoyantFactor = 1.0 + floaters * buoyantFactorPerFloater
+        // While the altitude-hold owns the vertical axis, keep core buoyancy neutral (1.0) so the
+        // hold isn't fighting a large floater-driven up-force; otherwise apply the floater buoyancy.
+        physShip.buoyantFactor = if (holdEngaged) 1.0 else 1.0 + floaters * buoyantFactorPerFloater
 
         // region Aligning
 
@@ -209,18 +233,57 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
         }
 
         // region Elevation
-        val idealUpwardForce = (idealUpwardVel.y() - vel.y() - (GRAVITY / EurekaConfig.SERVER.elevationSnappiness)) *
-                mass * EurekaConfig.SERVER.elevationSnappiness
+        if (holdEngaged) {
+            // Cruise counts as "hands off" -> hold; otherwise an active up/down key drives a new depth.
+            val verticalInputActive = !isCruising && (controlData?.upImpulse ?: 0.0f) != 0.0f
+            applyWaterAltitudeHold(physShip, idealUpwardVel, vel, mass, verticalInputActive)
+        } else {
+            val idealUpwardForce = (idealUpwardVel.y() - vel.y() - (GRAVITY / EurekaConfig.SERVER.elevationSnappiness)) *
+                    mass * EurekaConfig.SERVER.elevationSnappiness
 
-        physShip.applyInvariantForce(Vector3d(0.0,
-            min(balloonForceProvided, max(idealUpwardForce, 0.0)) +
-            // Add drag to the y-component
-            vel.y() * -mass,
-            0.0)
-        )
+            physShip.applyInvariantForce(Vector3d(0.0,
+                min(balloonForceProvided, max(idealUpwardForce, 0.0)) +
+                // Add drag to the y-component
+                vel.y() * -mass,
+                0.0)
+            )
+        }
         // endregion
 
         physShip.isStatic = anchored
+    }
+
+    // Vertical controller used while the water altitude-hold is engaged. It OWNS the Y axis and
+    // applies gravity feed-forward (-GRAVITY * mass), so the ship neither sinks nor needs balloon lift
+    // to stay put. On top of that it either drives a commanded velocity (player actively ascending/
+    // descending) or holds a latched Y with a critically-damped spring (hands off / cruising). Unlike
+    // the stock balloon force this net force can be up OR down, so it pins the ship against buoyancy
+    // that would otherwise float it out of the water. The force is purely vertical, so horizontal
+    // sailing speed and momentum are never touched -- no jolt, no slow-down.
+    private fun applyWaterAltitudeHold(
+        physShip: PhysShip,
+        idealUpwardVel: Vector3dc,
+        vel: Vector3dc,
+        mass: Double,
+        verticalInputActive: Boolean
+    ) {
+        val currentY = physShip.transform.positionInWorld.y()
+        val appliedY = if (verticalInputActive) {
+            // Actively moving: drive toward the same commanded vertical velocity the helm already uses
+            // (so it feels identical), and keep the setpoint pinned here so releasing the key holds at
+            // this exact depth. Net force = mass * elevationSnappiness * (targetVel - vel.y).
+            holdTargetY = currentY
+            ((idealUpwardVel.y() - vel.y()) * EurekaConfig.SERVER.elevationSnappiness - GRAVITY) * mass
+        } else {
+            // Holding: critically-damped spring to the latched Y. -GRAVITY cancels weight; the spring
+            // and damping (the net force after gravity) pull the ship back to exactly holdTargetY and
+            // settle it there with no overshoot. Latch on first hold tick if not already set.
+            val target = holdTargetY ?: currentY.also { holdTargetY = it }
+            val k = EurekaConfig.SERVER.waterAltitudeHoldStiffness
+            val c = 2.0 * sqrt(k) // critical damping: firm hold, no oscillation/bounce
+            ((target - currentY) * k - vel.y() * c - GRAVITY) * mass
+        }
+        physShip.applyInvariantForce(Vector3d(0.0, appliedY, 0.0))
     }
 
     private fun getControlData(player: SeatedControllingPlayer): ControlData {

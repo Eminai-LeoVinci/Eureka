@@ -117,6 +117,29 @@ object EurekaConfig {
         )
         var balloonLiftMultiplier = 1.0
 
+        @JsonSchema(
+            description = "Water altitude-hold: a HYBRID ship (has both floaters AND balloons) pins its " +
+                "current Y the moment its keel touches water, so it sails on the surface instead of balloon " +
+                "lift floating it back into the air. Hands off the helm (or cruise) = hold; press descend/" +
+                "ascend to choose a new depth, which re-latches when you let go; rising clear of the water " +
+                "returns to normal in-air hover. Vertical-only, so sailing speed is unaffected."
+        )
+        var enableWaterAltitudeHold = true
+
+        @JsonSchema(
+            description = "Stiffness of the water altitude-hold spring. Higher pins the Y tighter and faster " +
+                "but can feel abrupt; lower is softer and may sag slightly. Critically damped, so it never " +
+                "oscillates. Default 9.0."
+        )
+        var waterAltitudeHoldStiffness = 9.0
+
+        @JsonSchema(
+            description = "How submerged the ship must be (fraction 0..1) for the water altitude-hold to " +
+                "ENGAGE. Once engaged it stays until the hull fully clears the water. Small = engages as soon " +
+                "as the keel touches. Default 0.05."
+        )
+        var waterAltitudeHoldMinOverlap = 0.05
+
         // The amount of speed that the ship can move at when the left/right impulse button is held down.
         @JsonSchema(description = "The maximum linear velocity at any point on the ship caused by helm torque")
         var turnSpeed = 3.0
