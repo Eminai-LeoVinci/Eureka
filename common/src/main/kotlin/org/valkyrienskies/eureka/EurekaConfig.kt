@@ -14,7 +14,7 @@ object EurekaConfig {
     class Server {
 
         @JsonSchema(description = "Movement power per engine when heated fully")
-        var enginePowerLinear: Float = 500000f
+        var enginePowerLinear: Float = 100000f
 
         @JsonSchema(description = "Movement power per engine with minimal heat")
         var enginePowerLinearMin: Float = 10000f
@@ -29,7 +29,7 @@ object EurekaConfig {
         var engineHeatLoss = 0.01f
 
         @JsonSchema(description = "The amount of heat a gain per tick (when burning)")
-        var engineHeatGain = 0.03f
+        var engineHeatGain = 0.12f
 
         @JsonSchema(description = "Increases heat gained at low heat level, and increased heat decreases when at high heat and not consuming fuel")
         var engineHeatChangeExponent = 0.1f
@@ -50,10 +50,10 @@ object EurekaConfig {
         var engineFuelMultiplier = 2f
 
         @JsonSchema(description = "Extra engine power for when having multiple engines per engine")
-        var engineBoost = 0.2
+        var engineBoost = 4.0
 
         @JsonSchema(description = "At what amount of engines the boost will start taking effect")
-        var engineBoostOffset = 2.5
+        var engineBoostOffset = 5.0
 
         @JsonSchema(description = "The final linear boost will be raised to the power of 2, and the result of the delta is multiple by this value")
         var engineBoostExponentialPower = 0.000001
@@ -207,7 +207,7 @@ object EurekaConfig {
         var allowDisassembly = true
 
         @JsonSchema(description = "Maximum number of blocks allowed in a ship. Set to 0 for no limit")
-        var maxShipBlocks = 32 * 32 * 32
+        var maxShipBlocks = 50000
 
         // TODO: Remove blockBlacklist
         // Blacklist of blocks that don't get added for ship building
