@@ -50,15 +50,45 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
     var consumed = 0f
         private set
 
+    @JsonIgnore
     private var wasCruisePressed = false
+
+    // Rising-edge tracker for the turn key: true while leftImpulse was non-zero last tick. Lets us tell
+    // a turn HELD through cruise activation (the captured course -> keep circling) from a FRESH turn tap
+    // while cruising (a request to straighten -> drop the logged turn).
+    @JsonIgnore
+    private var wasTurnInputActive = false
+
+    // Cruise PERSISTS across a world reload so the ship keeps sailing/flying its course on relog. The
+    // live working course lives in [controlData] -- a nested data class we deliberately DON'T serialize
+    // (@JsonIgnore) to avoid depending on Jackson handling the nested type + Direction enum. Instead the
+    // course is mirrored into the flat persisted fields below every cruising tick and rebuilt into
+    // controlData on load (see the "resume cruise" block in physTick). [isCruising] and [oldSpeed] (the
+    // captured, frozen throttle) persist directly. Previously isCruising persisted but oldSpeed did not,
+    // so a reloaded ship came back "cruising" at zero speed -- it sat still AND swallowed player input.
     @JsonProperty("cruise")
     var isCruising = false
+
+    @JsonIgnore
     private var controlData: ControlData? = null
+
+    // Flat, persisted mirror of the cruise course (rebuilt into controlData on load). cruiseSeatDir is
+    // the seat-facing Direction ordinal, -1 = no captured course.
+    @JsonProperty("cruiseSeatDir")
+    private var cruiseSeatDir = -1
+    @JsonProperty("cruiseFwd")
+    private var cruiseFwd = 0.0f
+    @JsonProperty("cruiseLeft")
+    private var cruiseLeft = 0.0f
+    @JsonProperty("cruiseUp")
+    private var cruiseUp = 0.0f
+    @JsonProperty("cruiseSprint")
+    private var cruiseSprint = false
 
     @JsonIgnore
     var seatedPlayer: Player? = null
 
-    @JsonIgnore
+    @JsonProperty("cruiseSpeed")
     var oldSpeed = 0.0
 
     // Scratch objects reused across phys ticks (fieldVisibility=ANY would otherwise serialize
@@ -181,6 +211,9 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
                 isCruising = false
                 showCruiseStatus()
             }
+            // This branch returns before the control block, so reset the turn edge-tracker here too --
+            // otherwise a turn held at anchor time could read as a rising edge after un-anchoring.
+            wasTurnInputActive = false
 
             physShip.isStatic = true
             return
@@ -197,26 +230,74 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
 
         var idealUpwardVel = Vector3d(0.0, 0.0, 0.0)
 
+        // Resume a cruise saved across a world reload: controlData (the live course) is transient, so
+        // rebuild it from the persisted flat course the first tick after load. After this, the normal
+        // control flow owns controlData. isCruising + oldSpeed (the cruise speed) were restored directly,
+        // so the ship picks its course back up even before anyone (re)mounts the helm.
+        if (isCruising && controlData == null) {
+            if (cruiseSeatDir in 0..5) {
+                controlData = ControlData(
+                    Direction.values()[cruiseSeatDir],
+                    cruiseFwd, cruiseLeft, cruiseUp, cruiseSprint
+                )
+            } else {
+                // isCruising was saved with no captured course (e.g. saved on the exact activation tick,
+                // before any steering). Don't linger in a cruising-but-inert state -- drop cruise so the
+                // ship is immediately controllable rather than sitting still and ignoring input.
+                isCruising = false
+            }
+        }
+
         var liveControl: ControlData? = null
         if (validPlayer) {
             val player = controllingPlayer!!
 
-            liveControl = getControlData(player)
+            val live = getControlData(player)
+            liveControl = live
+            val turnInputActive = live.leftImpulse != 0.0f
 
             if (!isCruising) {
                 // Only freeze the control while NOT cruising. On the tick cruise turns on this is
-                // skipped, so controlData keeps the input the player held at activation (the logged
-                // course + direction). getPlayerForwardVel additionally freezes oldSpeed while
-                // cruising, so the activation SPEED is held too.
-                controlData = liveControl
+                // skipped, so controlData keeps the input the player held at activation -- the logged
+                // course + direction, INCLUDING any turn that was held (so it circles).
+                // getPlayerForwardVel additionally freezes oldSpeed while cruising, so the activation
+                // SPEED is held too.
+                controlData = live
+            } else if (turnInputActive && !wasTurnInputActive) {
+                // A FRESH turn press (rising edge) while cruising permanently DROPS the logged turn from
+                // the cruise course, keeping forward/ascend/everything else -- so a circling cruise
+                // straightens the instant the pilot taps a turn key. Rising-edge ONLY: a turn HELD
+                // through activation IS the captured course (keep circling), not a cancel request --
+                // otherwise enabling cruise mid-turn would clear that turn on the very same tick (the
+                // bug where "turning isn't captured"). On remount the held turn re-arms as a fresh edge,
+                // matching "remount + tap a turn -> drop it".
+                controlData?.let { frozen ->
+                    if (frozen.leftImpulse != 0.0f) controlData = frozen.copy(leftImpulse = 0.0f)
+                }
             }
 
+            wasTurnInputActive = turnInputActive
             wasCruisePressed = player.cruise
         } else {
+            // No pilot: a held turn can't carry across a dismount, so the next mount's turn is a fresh edge.
+            wasTurnInputActive = false
             if (!isCruising) {
                 // If the player isn't controlling the ship, and not cruising, reset the control data
                 controlData = null
                 oldSpeed = 0.0
+            }
+        }
+
+        // Mirror the live cruise course into the flat persisted fields so it survives a world reload
+        // (controlData itself is @JsonIgnore). Cheap -- the course is frozen while cruising, so this just
+        // tracks the occasional turn-drop. oldSpeed (the cruise speed) persists on its own field.
+        if (isCruising) {
+            controlData?.let { cd ->
+                cruiseSeatDir = cd.seatInDirection.ordinal
+                cruiseFwd = cd.forwardImpulse
+                cruiseLeft = cd.leftImpulse
+                cruiseUp = cd.upImpulse
+                cruiseSprint = cd.sprintOn
             }
         }
 
@@ -233,10 +314,11 @@ class EurekaShipControl : ShipPhysicsListener, ServerTickListener {
         // While cruising, the captured input (controlData) holds the forward DIRECTION, and the frozen
         // oldSpeed in getPlayerForwardVel holds the activation speed -- so "left alone" keeps the
         // logged course (a held turn circles). But turning and elevation stay LIVE so a mounted pilot
-        // can still steer and change depth without dropping cruise: a live turn overrides the logged
-        // turn (releasing it falls back to the logged turn), and live ascend/descend works through.
-        // Forward thrust ignores these overrides (it uses seat facing + frozen oldSpeed), so steering
-        // simply rotates the held velocity vector.
+        // can still steer and change depth without dropping cruise. Tapping a turn key (A/D)
+        // PERMANENTLY clears the logged turn (handled in the control block above), so the ship
+        // straightens and STAYS straight on release -- while the key is held, the live turn below
+        // still steers. Live ascend/descend passes through too. Forward thrust ignores all of this
+        // (it uses seat facing + frozen oldSpeed), so steering simply rotates the held velocity vector.
         val effective = if (isCruising) {
             controlData?.let { frozen ->
                 ControlData(
