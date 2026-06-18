@@ -9,6 +9,7 @@ import net.minecraft.world.level.BlockGetter
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.HorizontalDirectionalBlock
+import net.minecraft.world.level.block.Rotation
 import net.minecraft.world.level.block.SoundType
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.StateDefinition
@@ -47,6 +48,12 @@ class AnchorBlock :
                 BlockStateProperties.POWERED,
                 ctx.level.hasNeighborSignal(ctx.clickedPos)
             )
+    }
+
+    // Rotate the facing with the block so the anchor keeps its orientation through ship
+    // assembly/disassembly (base Block.rotate is identity). Mirrors ShipHelmBlock.
+    override fun rotate(state: BlockState, rotation: Rotation): BlockState? {
+        return state.setValue(FACING, rotation.rotate(state.getValue(FACING) as Direction)) as BlockState
     }
 
     override fun getShape(

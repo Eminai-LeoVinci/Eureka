@@ -16,6 +16,7 @@ import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.BaseEntityBlock
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.RenderShape
+import net.minecraft.world.level.block.Rotation
 import net.minecraft.world.level.block.SoundType
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityTicker
@@ -71,6 +72,13 @@ class EngineBlock : BaseEntityBlock(
     override fun getStateForPlacement(ctx: BlockPlaceContext): BlockState? {
         return defaultBlockState()
             .setValue(HORIZONTAL_FACING, ctx.horizontalDirection.opposite)
+    }
+
+    // Rotate the facing with the block so the engine keeps its orientation when a ship is
+    // assembled/disassembled (the base Block.rotate is identity, which left engines facing
+    // their original world direction after the hull was re-oriented). Mirrors ShipHelmBlock.
+    override fun rotate(state: BlockState, rotation: Rotation): BlockState? {
+        return state.setValue(HORIZONTAL_FACING, rotation.rotate(state.getValue(HORIZONTAL_FACING) as Direction)) as BlockState
     }
 
     override fun getRenderShape(blockState: BlockState): RenderShape {
