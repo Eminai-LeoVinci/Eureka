@@ -39,7 +39,6 @@ class EngineBlockEntity(pos: BlockPos, state: BlockState) :
     private var fuelLeft by data
     private var fuelTotal by data
     var fuel: ItemStack = ItemStack.EMPTY
-    private var maxEffectiveFuel = 100f - EurekaConfig.SERVER.engineHeatGain
     private var lastFuelValue = 1600; // coal: 1600
 
     override fun createMenu(containerId: Int, inventory: Inventory): AbstractContainerMenu =
@@ -61,6 +60,19 @@ class EngineBlockEntity(pos: BlockPos, state: BlockState) :
     fun tick() {
         if (this.level!!.isClientSide) return
 
+        // Resolve THIS engine's managing ship + its EurekaShipControl once per tick (the ship getter walks the
+        // loaded-ship index, so cache it). Two engine fields are MODE-affected -- engineHeatGain and
+        // enginePowerLinear -- and must honor the per-ship vanilla/advanced preset rather than the global
+        // ADVANCED defaults; everything else (heat loss, fuel, redstone) stays global on EurekaConfig.SERVER.
+        // A loose engine (not on a ship / control attachment absent) falls back to EurekaConfig.SERVER, which
+        // is the ADVANCED preset, so unmanaged engines behave exactly as before.
+        val eurekaShipControl = ship?.getAttachment(EurekaShipControl::class.java)
+        val engineCfg = eurekaShipControl?.engineCfg ?: EurekaConfig.SERVER
+
+        // Heat ceiling, derived per-tick from this ship's engineHeatGain preset (mode-affected) so the cap
+        // tracks the same vanilla/advanced gain used below; was a stale construction-time field.
+        val maxEffectiveFuel = 100f - engineCfg.engineHeatGain
+
         val isPowered = level!!.hasNeighborSignal(blockPos)
         if (EurekaConfig.SERVER.engineRedstoneBehaviorPause && isPowered) return
 
@@ -70,14 +82,14 @@ class EngineBlockEntity(pos: BlockPos, state: BlockState) :
 
                 if (EurekaConfig.SERVER.engineFuelSaving) {
                     if (heat <= maxEffectiveFuel) {
-                        heat += scaleEngineHeating(EurekaConfig.SERVER.engineHeatGain)
+                        heat += scaleEngineHeating(engineCfg.engineHeatGain)
                         fuelLeft--
                     }
                 } else {
                     fuelLeft--
 
                     if (heat <= maxEffectiveFuel) {
-                        heat += scaleEngineHeating(EurekaConfig.SERVER.engineHeatGain)
+                        heat += scaleEngineHeating(engineCfg.engineHeatGain)
                     }
                 }
 
@@ -97,8 +109,7 @@ class EngineBlockEntity(pos: BlockPos, state: BlockState) :
         }
 
         if (heat > 0) {
-            // single shipyard lookup per tick (the getter walks the loaded-ship index each call)
-            val eurekaShipControl = ship?.getAttachment(EurekaShipControl::class.java)
+            // eurekaShipControl was resolved once at the top of tick(); reuse it here.
             if (eurekaShipControl != null) {
                 // Avoid fluctuations in speed
                 var effectiveHeat = 1f
@@ -106,9 +117,12 @@ class EngineBlockEntity(pos: BlockPos, state: BlockState) :
                     effectiveHeat = heat / 100f
                 }
 
+                // enginePowerLinear is mode-affected (vanilla 500000f vs advanced 100000f): use this ship's
+                // preset so a vanilla ship makes 833d445-strength force AND its boost threshold scales against
+                // the same 500000f (boost at ~3 engines), restoring the real pre-overhaul engine feel.
                 eurekaShipControl.powerLinear += lerp(
                     EurekaConfig.SERVER.enginePowerLinearMin,
-                    EurekaConfig.SERVER.enginePowerLinear,
+                    engineCfg.enginePowerLinear,
                     effectiveHeat,
                 )
 

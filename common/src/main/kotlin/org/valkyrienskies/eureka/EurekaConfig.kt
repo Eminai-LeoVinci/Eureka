@@ -6,10 +6,54 @@ object EurekaConfig {
     @JvmField
     val CLIENT = Client()
 
+    // Two control presets. ADVANCED holds the current (overhauled) defaults -- the engine-independent turn
+    // law, the 3-set engage-to-latch cruise, and the retuned engine/elevation values. VANILLA restores the
+    // pre-overhaul 833d445 feel: it COPIES ADVANCED and overrides only the mode-affected fields whose default
+    // changed. A per-ship `vanillaControls` flag on EurekaShipControl selects which preset that ship reads its
+    // mode-affected physics off of (see EurekaShipControl.cfg and EurekaShipControl.engineCfg, the latter read
+    // by EngineBlockEntity for per-ship engine force/heat).
+    //
+    // maxShipBlocks and blockBlacklist stay GLOBAL: both are consumed at ASSEMBLY time (ShipHelmBlockEntity),
+    // where no ship -- and therefore no per-ship mode -- exists yet, so they CANNOT be per-ship. They are
+    // deliberately NOT overridden here; the only knobs that matter live on EurekaConfig.SERVER (=== ADVANCED).
     @JvmField
-    val SERVER = Server()
+    val ADVANCED = Server()
 
-    class Client
+    @JvmField
+    val VANILLA = Server().apply {
+        enginePowerLinear = 500000f
+        engineHeatGain = 0.03f
+        engineBoost = 0.2
+        engineBoostOffset = 2.5
+        maxReverseSpeedFromEngines = 8.0
+        baseImpulseElevationRate = 2.0
+        baseImpulseDescendRate = 4.0
+        // The ADVANCED turn defaults were retuned to 0.75 / 6.0; pin the original 833d445 values here so
+        // Vanilla mode keeps the faithful pre-overhaul (engine-dependent) turn feel.
+        turnSpeed = 3.0
+        turnAcceleration = 10.0
+    }
+
+    // SERVER is an ALIAS for the ADVANCED preset. The ~40 non-mode-affected reads (and EngineBlockEntity /
+    // ShipHelmBlockEntity, which read engine-heat / ship-size / blacklist globally) all use SERVER and keep
+    // reading the live ADVANCED preset -- which is what the config file's "server" key edits. Global toggles
+    // (water-altitude-hold, debugCruiseCancel) also live on SERVER === ADVANCED.
+    @JvmField
+    val SERVER = ADVANCED
+
+    class Client {
+        @JsonSchema(description = "Master toggle for the piloted-ship HUD. When off, the Speed/Altitude/Heading readouts are all hidden (and greyed out in the helm menu).")
+        var displayHud = true
+
+        @JsonSchema(description = "Show the piloted ship's speed as small text at the top-center of the screen.")
+        var displaySpeed = false
+
+        @JsonSchema(description = "Show the piloted ship's altitude (Y) at the top-center of the screen.")
+        var displayAltitude = false
+
+        @JsonSchema(description = "Show the piloted ship's compass heading at the top-center of the screen.")
+        var displayHeading = false
+    }
 
     class Server {
 
@@ -29,7 +73,7 @@ object EurekaConfig {
         var engineHeatLoss = 0.01f
 
         @JsonSchema(description = "The amount of heat a gain per tick (when burning)")
-        var engineHeatGain = 0.12f
+        var engineHeatGain = 0.09f
 
         @JsonSchema(description = "Increases heat gained at low heat level, and increased heat decreases when at high heat and not consuming fuel")
         var engineHeatChangeExponent = 0.1f
@@ -62,7 +106,7 @@ object EurekaConfig {
         var maxSpeedFromEngines = 24.0
 
         @JsonSchema(description = "Max reverse speed of a ship with engines")
-        var maxReverseSpeedFromEngines = 8.0
+        var maxReverseSpeedFromEngines = 12.0
 
         @JsonSchema(description = "The speed at which the ship stabilizes")
         var stabilizationSpeed = 10.0
@@ -89,10 +133,10 @@ object EurekaConfig {
         // Sensitivity of the up/down impulse buttons.
         // TODO maybe should be moved to VS2 client-side config?
         @JsonSchema(description = "Vertical sensitivity when ascending")
-        var baseImpulseElevationRate = 2.0
+        var baseImpulseElevationRate = 5.0
 
         @JsonSchema(description = "Vertical sensitivity when descending")
-        var baseImpulseDescendRate = 4.0
+        var baseImpulseDescendRate = 10.0
 
         @JsonSchema(description = "The max elevation speed boost gained by having extra extra balloons")
         var balloonElevationMaxSpeed = 5.5
@@ -141,11 +185,57 @@ object EurekaConfig {
         var waterAltitudeHoldMinOverlap = 0.05
 
         // The amount of speed that the ship can move at when the left/right impulse button is held down.
-        @JsonSchema(description = "The maximum linear velocity at any point on the ship caused by helm torque")
-        var turnSpeed = 3.0
+        @JsonSchema(
+            description = "Base turn rate -- the turning speed for taps and short holds. Holding ramps the ship " +
+                "up to this rate over turnAccelDelay seconds, so a TAP only reaches a small fraction of it " +
+                "(fine, pixel-level steering at low values). Engines no longer affect turning, so this and " +
+                "turnAcceleration fully control it. Low = slow, gentle turns; high = fast base turns."
+        )
+        var turnSpeed = 0.5
 
-        @JsonSchema(description = "The maximum linear acceleration at any point on the ship caused by helm torque")
-        var turnAcceleration = 10.0
+        @JsonSchema(
+            description = "Extra turn sharpness that engages ONLY after holding a turn longer than " +
+                "turnAccelDelay -- then the turn rate climbs beyond the turnSpeed base, sharper the longer you " +
+                "hold. Tapping never triggers it. 0 = turns stay at the turnSpeed base rate with no acceleration."
+        )
+        var turnAcceleration = 8.0
+
+        @JsonSchema(
+            description = "How long (seconds) a turn key must be held before turnAcceleration kicks in. Below " +
+                "this, only turnSpeed applies -- so tap-tap-tap gives small, fine orbit adjustments while a " +
+                "sustained hold ramps the turn sharper. Default 0.6."
+        )
+        var turnAccelDelay = 0.6
+
+        @JsonSchema(
+            description = "Seconds you must hold the OPPOSITE turn (A/D) to cancel a locked orbit while cruising " +
+                "(leaving horizontal/vertical cruise running). Taps/shorter holds only ADD influence and never " +
+                "cancel. Canceling the last active set turns cruise off. Default 3.0."
+        )
+        var turnCancelHold = 3.0
+
+        @JsonSchema(
+            description = "Seconds you must hold the OPPOSITE forward/back input (W/S) to cancel the horizontal " +
+                "cruise set while cruising (leaving turn/vertical running). Taps only ADD speed influence. " +
+                "Canceling the last active set turns cruise off. Default 3.0."
+        )
+        var horizontalCancelHold = 3.0
+
+        @JsonSchema(
+            description = "Seconds you must hold the OPPOSITE ascend/descend input (Space/V) to cancel the " +
+                "vertical cruise set while cruising (leaving horizontal/turn running). Taps only ADD climb " +
+                "influence. Canceling the last active set turns cruise off. Default 3.0."
+        )
+        var verticalCancelHold = 3.0
+
+        @JsonSchema(
+            description = "Lock-in turn cruise: while CRUISING, holding a turn key spins the ship up and the " +
+                "achieved turn RATE is latched when you release -- so the ship holds a constant-radius circle " +
+                "hands-off instead of straightening. A brief tap = a gentle wide orbit; a longer hold = a " +
+                "sharper orbit (up to turnSpeed). Steer the opposite way to widen or straighten out. false = " +
+                "turning while cruising just steers live and brakes back to straight on release (legacy)."
+        )
+        var enableTurnCruise = true
 
         @JsonSchema(
             description = "The maximum distance from center of mass to one end of the ship considered by " +
@@ -212,6 +302,12 @@ object EurekaConfig {
         // TODO: Remove blockBlacklist
         // Blacklist of blocks that don't get added for ship building
         @JsonSchema(description = "Blacklist of blocks that don't get assembled (Use Block Tag instead)")
-        var blockBlacklist : Set<String> = emptySet()
+        var blockBlacklist : Set<String> = setOf(
+            "minecraft:water", "minecraft:sand", "minecraft:gravel", "minecraft:lava", "minecraft:fire",
+            "minecraft:bedrock"
+        )
+
+        @JsonSchema(description = "Dev: action-bar a message each time a per-set cruise HOLD-cancel fires (Horizontal/Vertical/Turn). Read globally off EurekaConfig.SERVER; toggle in-game with /vs cruise-cancel-debug <bool>.")
+        var debugCruiseCancel = false
     }
 }

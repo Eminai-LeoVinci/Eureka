@@ -39,8 +39,14 @@ object EurekaConfigLoader {
             }
 
             val tree = mapper.readTree(CONFIG_FILE.toFile())
+            // "server" updates the ADVANCED preset (EurekaConfig.SERVER === ADVANCED).
             tree.get("server")?.takeIf { !it.isMissingNode && !it.isNull }?.let {
                 mapper.readerForUpdating(EurekaConfig.SERVER).readValue<Any>(it)
+            }
+            // "serverVanilla" updates the VANILLA preset. Legacy migration: if absent (pre-feature file),
+            // leave VANILLA at its baked 833d445 defaults -- writeConfig() below re-emits the key populated.
+            tree.get("serverVanilla")?.takeIf { !it.isMissingNode && !it.isNull }?.let {
+                mapper.readerForUpdating(EurekaConfig.VANILLA).readValue<Any>(it)
             }
             tree.get("client")?.takeIf { !it.isMissingNode && !it.isNull }?.let {
                 mapper.readerForUpdating(EurekaConfig.CLIENT).readValue<Any>(it)
@@ -58,11 +64,23 @@ object EurekaConfigLoader {
         }
     }
 
+    // Persist the live singletons now (e.g. after a client toggles a CLIENT option in a GUI). Safe to call
+    // any time; swallows IO errors so a failed save never breaks the UI action that triggered it.
+    @JvmStatic
+    fun save() {
+        try {
+            writeConfig()
+        } catch (e: Exception) {
+            LOGGER.warn("Failed to save Eureka config at {} ({})", CONFIG_FILE.toAbsolutePath(), e.message, e)
+        }
+    }
+
     private fun writeConfig() {
         CONFIG_FILE.parent?.let { Files.createDirectories(it) }
         val wrapper = linkedMapOf(
             "client" to EurekaConfig.CLIENT,
-            "server" to EurekaConfig.SERVER
+            "server" to EurekaConfig.ADVANCED,
+            "serverVanilla" to EurekaConfig.VANILLA
         )
         mapper.writeValue(CONFIG_FILE.toFile(), wrapper)
     }

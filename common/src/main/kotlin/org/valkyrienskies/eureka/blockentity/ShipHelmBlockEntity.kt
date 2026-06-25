@@ -9,6 +9,7 @@ import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.tags.FluidTags
 import net.minecraft.tags.TagKey
 import net.minecraft.world.MenuProvider
 import net.minecraft.world.entity.EntitySpawnReason
@@ -30,22 +31,30 @@ import org.valkyrienskies.core.api.attachment.getAttachment
 import org.valkyrienskies.core.api.ships.LoadedServerShip
 import org.valkyrienskies.eureka.EurekaBlockEntities
 import org.valkyrienskies.eureka.EurekaConfig
+import org.valkyrienskies.eureka.EurekaConfigLoader
 import org.valkyrienskies.eureka.EurekaMod
 import org.valkyrienskies.eureka.block.AnchorBlock
 import org.valkyrienskies.eureka.block.BalloonBlock
+import org.valkyrienskies.eureka.block.EngineBlock
 import org.valkyrienskies.eureka.block.FloaterBlock
 import org.valkyrienskies.eureka.block.ShipHelmBlock
 import org.valkyrienskies.eureka.gui.shiphelm.ShipHelmScreenMenu
 import org.valkyrienskies.eureka.ship.EurekaShipControl
 import org.valkyrienskies.eureka.util.ShipAssembler
+import org.valkyrienskies.mod.api.SeatedControllingPlayer
 import org.valkyrienskies.mod.common.ValkyrienSkiesMod
 import org.valkyrienskies.mod.common.entity.ShipMountingEntity
 import org.valkyrienskies.mod.common.executeIf
 import org.valkyrienskies.mod.common.getLoadedShipManagingPos
 import org.valkyrienskies.mod.common.shipObjectWorld
+import org.valkyrienskies.mod.common.util.EntityShipCollisionUtils
+import org.valkyrienskies.mod.common.util.settings
 import org.valkyrienskies.mod.common.util.toDoubles
 import org.valkyrienskies.mod.common.util.toJOMLD
 import org.valkyrienskies.mod.util.logger
+import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.max
 
 val ASSEMBLE_BLACKLIST: TagKey<Block> =
     TagKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath(EurekaMod.MOD_ID, "assemble_blacklist"))
@@ -57,6 +66,38 @@ class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
 
     private val ship: LoadedServerShip? get() = (level as ServerLevel).getLoadedShipManagingPos(this.blockPos)
     private val control: EurekaShipControl? get() = ship?.getAttachment(EurekaShipControl::class.java)
+
+    // Keep-active (VS2 ShipSettings), toggled from the helm menu's "Keep Active?" checkbox -- equivalent to
+    // `/vs set-keep-active <ship> <bool>` but usable by players without command access. Server-side only.
+    val keepActive: Boolean get() = ship?.settings?.keepActive ?: false
+    fun setKeepActive(value: Boolean) {
+        ship?.let { it.settings.keepActive = value }
+    }
+
+    // Ship stats surfaced to the helm menu (synced to the client via DataSlots in ShipHelmScreenMenu).
+    // Both are captured at assembly and persisted on the EurekaShipControl attachment, so a ship assembled
+    // before this feature existed reads 0 until it is re-assembled.
+    val assembledBlockCount: Int get() = control?.assembledBlocks ?: 0
+    val estimatedTopSpeed: Int get() = ceil(control?.estimateTopSpeed() ?: 0.0).toInt()
+
+    // Water altitude-hold is a GLOBAL server setting (EurekaConfig.SERVER), not per-ship. The helm's
+    // "Water Altitude Lock" checkbox flips it for everyone; the DataSlot reflects the current value back.
+    val waterAltitudeHold: Boolean get() = EurekaConfig.SERVER.enableWaterAltitudeHold
+    fun toggleWaterAltitudeHold() {
+        EurekaConfig.SERVER.enableWaterAltitudeHold = !EurekaConfig.SERVER.enableWaterAltitudeHold
+        EurekaConfigLoader.save()
+    }
+
+    // Vanilla controls is PER-SHIP (mirrors the keep-active pattern, but against `control` not ship.settings).
+    // The helm's "Vanilla" checkbox flips this ONE ship's mode and cancels its cruise, since `control` resolves
+    // via getLoadedShipManagingPos(blockPos). Server-side only.
+    val vanillaControls: Boolean get() = control?.vanillaControls ?: false
+    fun toggleVanillaControls() {
+        control?.let {
+            it.vanillaControls = !it.vanillaControls
+            it.cancelCruiseForModeSwitch()
+        }
+    }
     private val seats = mutableListOf<ShipMountingEntity>()
     val assembled get() = ship != null
     val aligning get() = control?.aligning ?: false
@@ -127,6 +168,35 @@ class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
         return pos.y + shape.max(Axis.Y)
     }
 
+    // Is the ship's keel touching real-world water? Samples a coarse grid of the hull's world footprint
+    // at the keel Y for water. Game-thread only (touches the world). This is what lets the water altitude
+    // hold work on ANY body of water -- VS2's liquidOverlap only sees the flat dimension sea-level plane.
+    private fun sampleKeelInWater(level: ServerLevel, ship: LoadedServerShip): Boolean {
+        val aabb = ship.worldAABB
+        val keelY = floor(aabb.minY()).toInt()
+        val minX = floor(aabb.minX()).toInt()
+        val maxX = floor(aabb.maxX()).toInt()
+        val minZ = floor(aabb.minZ()).toInt()
+        val maxZ = floor(aabb.maxZ()).toInt()
+        // Coarse grid (~6x6 max) so a large hull doesn't cost a full-footprint scan every tick.
+        val stepX = max(1, (maxX - minX) / 5)
+        val stepZ = max(1, (maxZ - minZ) / 5)
+        val pos = BlockPos.MutableBlockPos()
+        var x = minX
+        while (x <= maxX) {
+            var z = minZ
+            while (z <= maxZ) {
+                pos.set(x, keelY, z)
+                if (level.hasChunkAt(pos) && level.getFluidState(pos).`is`(FluidTags.WATER)) {
+                    return true
+                }
+                z += stepZ
+            }
+            x += stepX
+        }
+        return false
+    }
+
     fun startRiding(player: Player, force: Boolean, blockPos: BlockPos, state: BlockState, level: ServerLevel): Boolean {
         for (i in seats.size - 1 downTo 0) {
             if (!seats[i].isVehicle) {
@@ -157,6 +227,23 @@ class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
             this.disassemble()
         }
         curControl?.ship = curShip
+
+        // Feed the control real-world water contact at the keel (game thread = safe world access). VS2's
+        // liquidOverlap only sees the dimension's flat sea-level plane, so this is what lets the water
+        // altitude hold engage on man-made / elevated water bodies, not just the ocean at sea level.
+        val sLevel = level
+        if (curControl != null && curShip != null && sLevel is ServerLevel) {
+            curControl.keelInWater = sampleKeelInWater(sLevel, curShip)
+            // Measure per-axis input-hold time on the fixed-rate game thread (physics TPS is variable) so the
+            // physics turn law can gate the acceleration phase and all three sets can do hold-to-cancel.
+            val seat = curShip.getAttachment(SeatedControllingPlayer::class.java)
+            curControl.updateInputHolds(
+                sLevel.gameTime,
+                seat?.forwardImpulse ?: 0.0f,
+                seat?.leftImpulse ?: 0.0f,
+                seat?.upImpulse ?: 0.0f
+            )
+        }
 
         // The ShipMountingEntity seat does not tick server-side: shipyard chunks are only
         // promoted to BLOCK_TICKING (see VS2 MixinChunkHolder), never ENTITY_TICKING, so the
@@ -245,6 +332,8 @@ class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
         var floaterCount = 0
         var anchorCount = 0
         var activeAnchorCount = 0
+        var engineCount = 0
+        var blockCount = 0 // total non-air assembled blocks (block entities like chests count too)
         val builtShip = ShipAssembler.collectBlocks(
             level,
             blockPos
@@ -253,11 +342,13 @@ class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
             // TODO: Remove blockBlacklist
             !(EurekaConfig.SERVER.blockBlacklist.isNotEmpty() && EurekaConfig.SERVER.blockBlacklist.contains(BuiltInRegistries.BLOCK.getKey(it.block).toString()))
             if (allowed) {
+                blockCount++
                 when (it.block) {
                     is ShipHelmBlock -> helmCount++
                     is BalloonBlock -> balloonCount++
                     // Floater buoyancy scales with 15 - redstone power, matching FloaterBlock.onPlace.
                     is FloaterBlock -> floaterCount += 15 - it.getValue(BlockStateProperties.POWER)
+                    is EngineBlock -> engineCount++
                     is AnchorBlock -> {
                         anchorCount++
                         if (it.getValue(BlockStateProperties.POWERED)) activeAnchorCount++
@@ -286,6 +377,8 @@ class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
                 control.floaters = floaterCount
                 control.anchors = anchorCount
                 control.anchorsActive = activeAnchorCount
+                control.engines = engineCount
+                control.assembledBlocks = blockCount
             }
 
             val loaded = level.shipObjectWorld.loadedShips.getById(shipId)
@@ -315,6 +408,15 @@ class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
 
         val inWorld = ship.shipToWorld.transformPosition(this.blockPos.toJOMLD())
 
+        // Fall-through hold through the teardown: the shipyard collision vanishes for a split second before the
+        // world blocks become collidable, so the player / mobs / animals / armor stands would otherwise drop a
+        // block. Hold every entity over the ship's world footprint BEFORE the unfill, and once more (a touch
+        // longer) AFTER it, in case the world-side blocks need an extra moment to register. World-AABB keyed
+        // because unfillShip removes the ship (its id can't be used); the box is captured now, while the ship is
+        // still valid, and reused for both arms.
+        val holdAABB = EntityShipCollisionUtils.worldAABBForShip(ship)
+        EntityShipCollisionUtils.markWorldFreeze(level, holdAABB, 2_000_000_000L) // ~2s gravity-hold through teardown (mobs/entities only)
+
         ShipAssembler.unfillShip(
             level as ServerLevel,
             ship,
@@ -323,6 +425,7 @@ class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
         )
         // ship.die() TODO i think we do need this no? or autodetecting on all air
 
+        EntityShipCollisionUtils.markWorldFreeze(level, holdAABB, 2_000_000_000L)
         shouldDisassembleWhenPossible = false
     }
 

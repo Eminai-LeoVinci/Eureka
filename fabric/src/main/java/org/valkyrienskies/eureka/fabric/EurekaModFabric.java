@@ -1,11 +1,15 @@
 package org.valkyrienskies.eureka.fabric;
 
+import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.terraformersmc.modmenu.api.ConfigScreenFactory;
 import com.terraformersmc.modmenu.api.ModMenuApi;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.fabricmc.fabric.api.resource.ResourcePackActivationType;
 import net.fabricmc.loader.api.FabricLoader;
@@ -13,11 +17,15 @@ import net.fabricmc.loader.api.ModContainer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.valkyrienskies.eureka.EurekaBlockEntities;
+import org.valkyrienskies.eureka.EurekaConfig;
+import org.valkyrienskies.eureka.EurekaConfigLoader;
 import org.valkyrienskies.eureka.EurekaItems;
 import org.valkyrienskies.eureka.EurekaMod;
 import org.valkyrienskies.eureka.blockentity.renderer.ShipHelmBlockEntityRenderer;
+import org.valkyrienskies.eureka.client.EurekaSpeedHud;
 import org.valkyrienskies.eureka.fabric.registry.FuelRegistryImpl;
 import org.valkyrienskies.eureka.registry.CreativeTabs;
 import org.valkyrienskies.mod.fabric.common.ValkyrienSkiesModFabric;
@@ -43,6 +51,32 @@ public class EurekaModFabric implements ModInitializer {
                 EurekaBlockEntities.INSTANCE.getSHIP_HELM().get(),
                 ShipHelmBlockEntityRenderer::new
             );
+
+            // Top-center piloted-ship speed overlay, toggled by the helm menu's "Display Speed" checkbox.
+            HudRenderCallback.EVENT.register(
+                (guiGraphics, deltaTracker) -> EurekaSpeedHud.INSTANCE.render(guiGraphics));
+
+            // DEBUG/TEST TOGGLE: "/vs cruise-cancel-debug <bool>". Registered as a CLIENT command so it merges into
+            // the SAME client "vs" literal as VS2's ship-shadows/ship-emissive -- the tree Fabric's client parser
+            // resolves FIRST. (A server-side addChild onto VS2's "vs" node does NOT parse: the client "vs" tree is
+            // checked first and lacks the child, so it fails right after "vs".) debugCruiseCancel is a static on the
+            // EurekaConfig object, so this write is seen by the integrated-server cruise logic in single-player.
+            // Single-player only by design (a client command can't reach a remote dedicated server); matches the
+            // ship-shadows pattern. Candidate for removal at final cleanup.
+            ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
+                dispatcher.register(
+                    ClientCommandManager.literal("vs")
+                        .then(ClientCommandManager.literal("cruise-cancel-debug")
+                            .then(ClientCommandManager.argument("enabled", BoolArgumentType.bool())
+                                .executes(ctx -> {
+                                    boolean enabled = BoolArgumentType.getBool(ctx, "enabled");
+                                    EurekaConfig.SERVER.setDebugCruiseCancel(enabled);
+                                    EurekaConfigLoader.save();
+                                    ctx.getSource().sendFeedback(
+                                        Component.literal("Eureka cruise-cancel debug " + (enabled ? "enabled" : "disabled"))
+                                    );
+                                    return 1;
+                                })))));
 
             Registry.register(
                 BuiltInRegistries.CREATIVE_MODE_TAB,
