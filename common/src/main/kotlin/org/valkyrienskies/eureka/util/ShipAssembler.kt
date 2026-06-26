@@ -6,7 +6,10 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.level.ChunkPos
+import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.Rotation
+import net.minecraft.world.level.block.SnowLayerBlock
 import net.minecraft.world.level.block.state.BlockState
 import org.joml.AxisAngle4d
 import org.joml.Matrix4d
@@ -37,9 +40,28 @@ object ShipAssembler {
         if (result) {
             val blockPositions = HashSet<BlockPos>()
             blocks.forEach { x, y, z -> blockPositions.add(BlockPos(x, y, z)) }
+            clearRestingSnowLayers(level, blockPositions)
             return VSShipAssembler.assembleToShip(level, blockPositions, 1.0)
         } else {
             return null
+        }
+    }
+
+    // Snow layers (minecraft:snow) are in the assemble_blacklist, so they're never collected into the
+    // ship -- but excluding them just leaves them behind in the world, hovering over the spot the deck
+    // used to occupy, where (once they stack up) their collision box stops the player from moving. A
+    // layer always rests directly on the block beneath it, so any layer sitting on top of an assembled
+    // block is one that would be orphaned: delete it before the ship relocates to the shipyard. Whole
+    // snow blocks (minecraft:snow_block) are NOT SnowLayerBlock, so they assemble with the ship as usual.
+    private fun clearRestingSnowLayers(level: ServerLevel, blockPositions: Set<BlockPos>) {
+        val above = BlockPos.MutableBlockPos()
+        for (pos in blockPositions) {
+            above.set(pos.x, pos.y + 1, pos.z)
+            // Another ship block sits directly on top -- can't be a resting layer, and skips a world read.
+            if (blockPositions.contains(above)) continue
+            if (level.getBlockState(above).block is SnowLayerBlock) {
+                level.setBlock(above, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS)
+            }
         }
     }
 
