@@ -45,6 +45,10 @@ class ShipHelmScreen(handler: ShipHelmScreenMenu, playerInventory: Inventory, te
     init {
         titleLabelX = 6
         titleLabelY = 6
+        // The panel texture is rendered PANEL_HEIGHT tall (extended 10px below the default 166) so the
+        // button stack can sit lower without crowding the "Vanilla Controls" checkbox row; keep imageHeight
+        // in sync so the panel stays vertically centered and renderBg blits the full extended art.
+        imageHeight = PANEL_HEIGHT
     }
 
     override fun init() {
@@ -126,9 +130,9 @@ class ShipHelmScreen(handler: ShipHelmScreenMenu, playerInventory: Inventory, te
                 minecraft?.gameMode?.handleInventoryButtonClick(menu.containerId, 4)
             }
         )
-        // "Vanilla" -> flips THIS ship's per-ship control mode (menu button 6). Per-ship, so it greys out
-        // when not looking at a ship (gated like keepActive in updateButtons). Row 6 -- fits because
-        // CHECKBOX_DY was tightened 9->8 (no ship_helm.png edit needed).
+        // "Vanilla Controls" -> flips THIS ship's per-ship control mode (menu button 6). Per-ship, so it greys
+        // out when not looking at a ship (gated like keepActive in updateButtons). Row 6 -- the panel was
+        // extended 10px and the buttons pushed down to give this row clear air (see PANEL_HEIGHT / BUTTON_*_Y).
         vanillaCheckbox = addRenderableWidget(
             ShipHelmCheckbox(
                 x + CHECKBOX_X, y + checkboxRowY(6), checkboxWidth(VANILLA_TEXT),
@@ -269,9 +273,14 @@ class ShipHelmScreen(handler: ShipHelmScreenMenu, playerInventory: Inventory, te
     private fun dimensionsText(s: Ship): String {
         val a = s.shipAABB ?: return "H:- W:- L:-"
         val h = a.maxY() - a.minY() + 1
-        // W = beam (ship-local Z extent), L = fore-aft (ship-local X extent)
-        val w = a.maxZ() - a.minZ() + 1
-        val l = a.maxX() - a.minX() + 1
+        // W/L by MAGNITUDE, not a fixed axis: width = the shorter horizontal extent, length = the longer.
+        // A fixed X/Z mapping reads right for one hull but flips for a hull built along the other axis (there
+        // is no ship-local axis that is always "width"); magnitude matches the boat-shaped intuition
+        // (length >= width) regardless of how the ship was oriented when assembled.
+        val xExt = a.maxX() - a.minX() + 1
+        val zExt = a.maxZ() - a.minZ() + 1
+        val w = minOf(xExt, zExt)
+        val l = maxOf(xExt, zExt)
         return "H:$h W:$w L:$l"
     }
 
@@ -324,8 +333,8 @@ class ShipHelmScreen(handler: ShipHelmScreenMenu, playerInventory: Inventory, te
         private val pendingNames = HashMap<Long, String>()
 
         // Right-hand checkbox column (the open area beside the texture's left info boxes). Seven rows fit between
-        // the title separator (y15) and the first button (y76): row 6 (Vanilla) box at 18+8*6=66..75 clears the
-        // button at 76. The sub-toggles are indented under the master.
+        // the title separator (y15) and the first button (y86): row 6 (Vanilla Controls) box at 18+8*6=66..75
+        // clears the button at 86 with 11px to spare. The sub-toggles are indented under the master.
         private const val CHECKBOX_X = 74
         private const val CHECKBOX_SUB_X = 88 // indented further in so the HUD sub-toggles clearly nest under it
         private const val CHECKBOX_Y = 18 // first row, just below the title separator
@@ -354,14 +363,19 @@ class ShipHelmScreen(handler: ShipHelmScreenMenu, playerInventory: Inventory, te
         private const val RENAME_BOX_W = 118
         private const val RENAME_BOX_H = 12
 
-        // Buttons nudged down 3px (73/103/133 -> 76/106/136) so the 7th checkbox row (Vanilla, box y66..75)
-        // clears the first button: 75 < 76. Bottom button now ends at 136+23=159, still inside the 166px panel.
+        // The panel art (ship_helm.png) is rendered PANEL_HEIGHT tall -- it was extended 10px (166->176): the
+        // baked button frames AND the bottom border were shifted down 10px in the texture, and the hover/pressed
+        // button sprites relocated to match (ShipHelmButton.BUTTON_H_Y/P_Y). The three buttons move down the same
+        // 10px here (76/106/136 -> 86/116/146) so they align with their shifted baked frames; this gives the
+        // relabeled "Vanilla Controls" checkbox row (box y66..75) clear air above the first button. Bottom button
+        // ends at 146+23=169, preserving the original 7px margin inside the now-176px panel.
+        private const val PANEL_HEIGHT = 176
         private const val BUTTON_1_X = 10
-        private const val BUTTON_1_Y = 76
+        private const val BUTTON_1_Y = 86
         private const val BUTTON_2_X = 10
-        private const val BUTTON_2_Y = 106
+        private const val BUTTON_2_Y = 116
         private const val BUTTON_3_X = 10
-        private const val BUTTON_3_Y = 136
+        private const val BUTTON_3_Y = 146
 
         private val KEEP_ACTIVE_TEXT = Component.translatable("gui.vs_eureka.keep_active")
         private val WATER_LOCK_TEXT = Component.translatable("gui.vs_eureka.water_lock")

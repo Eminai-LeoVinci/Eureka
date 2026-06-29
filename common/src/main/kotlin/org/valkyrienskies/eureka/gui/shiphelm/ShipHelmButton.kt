@@ -59,9 +59,11 @@ class ShipHelmButton(x: Int, y: Int, text: Component, private val font: Font, on
     }
 
     companion object {
+        // Sprite rows in ship_helm.png. The panel art was extended 10px (166->176), so the hover/pressed button
+        // sprites that live below the panel were relocated down 10px too (166->176, 189->199) to clear it.
         private const val BUTTON_H_X = 0
-        private const val BUTTON_H_Y = 166
+        private const val BUTTON_H_Y = 176
         private const val BUTTON_P_X = 0
-        private const val BUTTON_P_Y = 189
+        private const val BUTTON_P_Y = 199
     }
 }
