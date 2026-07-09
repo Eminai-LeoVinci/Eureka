@@ -9,6 +9,7 @@ import net.fabricmc.api.Environment;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.fabricmc.fabric.api.resource.ResourcePackActivationType;
@@ -26,6 +27,7 @@ import org.valkyrienskies.eureka.EurekaItems;
 import org.valkyrienskies.eureka.EurekaMod;
 import org.valkyrienskies.eureka.blockentity.renderer.ShipHelmBlockEntityRenderer;
 import org.valkyrienskies.eureka.client.EurekaSpeedHud;
+import org.valkyrienskies.eureka.command.ShipWeightCommand;
 import org.valkyrienskies.eureka.fabric.registry.FuelRegistryImpl;
 import org.valkyrienskies.eureka.registry.CreativeTabs;
 import org.valkyrienskies.mod.fabric.common.ValkyrienSkiesModFabric;
@@ -39,6 +41,11 @@ public class EurekaModFabric implements ModInitializer {
         new FuelRegistryImpl();
 
         EurekaMod.init();
+
+        // "/vs get-ship-weight <ship> <floater|balloon>" -- SERVER command; Brigadier merges this "vs"
+        // literal into VS2's root, and VS2's vs_command_passthrough mixin lets the client send it.
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
+            ShipWeightCommand.INSTANCE.register(dispatcher));
     }
 
     @Environment(EnvType.CLIENT)
