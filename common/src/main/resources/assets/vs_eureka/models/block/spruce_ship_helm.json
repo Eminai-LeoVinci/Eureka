@@ -6,6 +6,6 @@
 		"planks": "block/spruce_planks",
 		"iron_block": "block/iron_block",
 		"particle": "block/spruce_planks",
-		"gold_block": "block/gold_block"
+		"gold_block": "vs_eureka:block/helm_wheel_hub"
 	}
   }

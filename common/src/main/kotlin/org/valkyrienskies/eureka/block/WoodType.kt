@@ -12,6 +12,7 @@ public enum class WoodType(final val logBlock: Block, final val plankBlock: Bloc
     DARK_OAK(Blocks.DARK_OAK_LOG, Blocks.DARK_OAK_PLANKS),
     JUNGLE(Blocks.JUNGLE_LOG, Blocks.JUNGLE_PLANKS),
     OAK(Blocks.OAK_LOG, Blocks.OAK_PLANKS),
+    PALE_OAK(Blocks.PALE_OAK_LOG, Blocks.PALE_OAK_PLANKS),
     SPRUCE(Blocks.SPRUCE_LOG, Blocks.SPRUCE_PLANKS),
     WARPED(Blocks.WARPED_STEM, Blocks.WARPED_PLANKS);
 

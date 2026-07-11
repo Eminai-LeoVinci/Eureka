@@ -43,6 +43,13 @@ object EurekaBlocks {
             WoodType.BIRCH
         )
     }
+    // Pale oak exists only on 1.21.11+ (this port), so there is no 1.21.1 counterpart.
+    val PALE_OAK_SHIP_HELM = BLOCKS.register("pale_oak_ship_helm") {
+        ShipHelmBlock(
+            blockProps().mapColor(MapColor.WOOD).strength(2.5F).sound(SoundType.WOOD),
+            WoodType.PALE_OAK
+        )
+    }
     val JUNGLE_SHIP_HELM = BLOCKS.register("jungle_ship_helm") {
         ShipHelmBlock(
             blockProps().mapColor(MapColor.WOOD).strength(2.5F).sound(SoundType.WOOD),
@@ -188,6 +195,7 @@ object EurekaBlocks {
         flammableBlock(OAK_SHIP_HELM.get(), 5, 20)
         flammableBlock(SPRUCE_SHIP_HELM.get(), 5, 20)
         flammableBlock(BIRCH_SHIP_HELM.get(), 5, 20)
+        flammableBlock(PALE_OAK_SHIP_HELM.get(), 5, 20)
         flammableBlock(JUNGLE_SHIP_HELM.get(), 5, 20)
         flammableBlock(ACACIA_SHIP_HELM.get(), 5, 20)
         flammableBlock(DARK_OAK_SHIP_HELM.get(), 5, 20)

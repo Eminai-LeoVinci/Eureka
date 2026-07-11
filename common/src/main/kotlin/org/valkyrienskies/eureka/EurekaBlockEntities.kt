@@ -21,6 +21,7 @@ object EurekaBlockEntities {
         EurekaBlocks.OAK_SHIP_HELM,
         EurekaBlocks.SPRUCE_SHIP_HELM,
         EurekaBlocks.BIRCH_SHIP_HELM,
+        EurekaBlocks.PALE_OAK_SHIP_HELM,
         EurekaBlocks.JUNGLE_SHIP_HELM,
         EurekaBlocks.ACACIA_SHIP_HELM,
         EurekaBlocks.DARK_OAK_SHIP_HELM,
