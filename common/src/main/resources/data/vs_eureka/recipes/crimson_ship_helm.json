@@ -1,22 +1,25 @@
 {
   "type": "minecraft:crafting_shaped",
   "pattern": [
-    "/O/",
-    "OgO",
-    "/_/"
+    "BFB",
+    "FHF",
+    "SLS"
   ],
   "key": {
-    "/": {
-      "item": "minecraft:stick"
+    "B": {
+      "item": "minecraft:iron_bars"
     },
-    "O": {
+    "F": {
       "item": "minecraft:crimson_fence"
     },
-    "g": {
-      "item": "minecraft:gold_ingot"
+    "H": {
+      "item": "minecraft:heart_of_the_sea"
     },
-    "_": {
+    "S": {
       "item": "minecraft:crimson_slab"
+    },
+    "L": {
+      "item": "minecraft:lodestone"
     }
   },
   "result": {

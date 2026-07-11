@@ -6,6 +6,6 @@
 		"planks": "block/acacia_planks",
 		"iron_block": "block/iron_block",
 		"particle": "block/acacia_planks",
-		"gold_block": "block/gold_block"
+		"gold_block": "vs_eureka:block/helm_wheel_hub"
 	}
   }
