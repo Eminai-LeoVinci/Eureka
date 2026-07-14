@@ -25,49 +25,49 @@ object EurekaBlocks {
     // region Ship Helms
     val OAK_SHIP_HELM = BLOCKS.register("oak_ship_helm") {
         ShipHelmBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.5F).sound(SoundType.WOOD),
+            BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.5F).sound(SoundType.WOOD).requiresCorrectToolForDrops(),
             WoodType.OAK
         )
     }
     val SPRUCE_SHIP_HELM = BLOCKS.register("spruce_ship_helm") {
         ShipHelmBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.5F).sound(SoundType.WOOD),
+            BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.5F).sound(SoundType.WOOD).requiresCorrectToolForDrops(),
             WoodType.SPRUCE
         )
     }
     val BIRCH_SHIP_HELM = BLOCKS.register("birch_ship_helm") {
         ShipHelmBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.5F).sound(SoundType.WOOD),
+            BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.5F).sound(SoundType.WOOD).requiresCorrectToolForDrops(),
             WoodType.BIRCH
         )
     }
     val JUNGLE_SHIP_HELM = BLOCKS.register("jungle_ship_helm") {
         ShipHelmBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.5F).sound(SoundType.WOOD),
+            BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.5F).sound(SoundType.WOOD).requiresCorrectToolForDrops(),
             WoodType.JUNGLE
         )
     }
     val ACACIA_SHIP_HELM = BLOCKS.register("acacia_ship_helm") {
         ShipHelmBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.5F).sound(SoundType.WOOD),
+            BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.5F).sound(SoundType.WOOD).requiresCorrectToolForDrops(),
             WoodType.ACACIA
         )
     }
     val DARK_OAK_SHIP_HELM = BLOCKS.register("dark_oak_ship_helm") {
         ShipHelmBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.5F).sound(SoundType.WOOD),
+            BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.5F).sound(SoundType.WOOD).requiresCorrectToolForDrops(),
             WoodType.DARK_OAK
         )
     }
     val CRIMSON_SHIP_HELM = BLOCKS.register("crimson_ship_helm") {
         ShipHelmBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.NETHER).strength(2.5F).sound(SoundType.STEM),
+            BlockBehaviour.Properties.of().mapColor(MapColor.NETHER).strength(2.5F).sound(SoundType.STEM).requiresCorrectToolForDrops(),
             WoodType.CRIMSON
         )
     }
     val WARPED_SHIP_HELM = BLOCKS.register("warped_ship_helm") {
         ShipHelmBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.NETHER).strength(2.5F).sound(SoundType.STEM),
+            BlockBehaviour.Properties.of().mapColor(MapColor.NETHER).strength(2.5F).sound(SoundType.STEM).requiresCorrectToolForDrops(),
             WoodType.WARPED
         )
     }
@@ -76,87 +76,87 @@ object EurekaBlocks {
     // region Balloons
     val BALLOON = BLOCKS.register("balloon") {
         BalloonBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.WOOL).strength(0.8F).sound(SoundType.WOOL)
+            BlockBehaviour.Properties.of().mapColor(MapColor.WOOL).strength(0.8F).sound(SoundType.WOOL).requiresCorrectToolForDrops()
         )
     }
     val WHITE_BALLOON = BLOCKS.register("white_balloon") {
         BalloonBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.SNOW).strength(0.8F).sound(SoundType.WOOL)
+            BlockBehaviour.Properties.of().mapColor(MapColor.SNOW).strength(0.8F).sound(SoundType.WOOL).requiresCorrectToolForDrops()
         )
     }
     val LIGHT_GRAY_BALLOON = BLOCKS.register("light_gray_balloon") {
         BalloonBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_LIGHT_GRAY).strength(0.8F).sound(SoundType.WOOL)
+            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_LIGHT_GRAY).strength(0.8F).sound(SoundType.WOOL).requiresCorrectToolForDrops()
         )
     }
     val GRAY_BALLOON = BLOCKS.register("gray_balloon") {
         BalloonBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_GRAY).strength(0.8F).sound(SoundType.WOOL)
+            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_GRAY).strength(0.8F).sound(SoundType.WOOL).requiresCorrectToolForDrops()
         )
     }
     val BLACK_BALLOON = BLOCKS.register("black_balloon") {
         BalloonBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_BLACK).strength(0.8F).sound(SoundType.WOOL)
+            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_BLACK).strength(0.8F).sound(SoundType.WOOL).requiresCorrectToolForDrops()
         )
     }
     val RED_BALLOON = BLOCKS.register("red_balloon") {
         BalloonBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_RED).strength(0.8F).sound(SoundType.WOOL)
+            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_RED).strength(0.8F).sound(SoundType.WOOL).requiresCorrectToolForDrops()
         )
     }
     val ORANGE_BALLOON = BLOCKS.register("orange_balloon") {
         BalloonBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_ORANGE).strength(0.8F).sound(SoundType.WOOL)
+            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_ORANGE).strength(0.8F).sound(SoundType.WOOL).requiresCorrectToolForDrops()
         )
     }
     val YELLOW_BALLOON = BLOCKS.register("yellow_balloon") {
         BalloonBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_YELLOW).strength(0.8F).sound(SoundType.WOOL)
+            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_YELLOW).strength(0.8F).sound(SoundType.WOOL).requiresCorrectToolForDrops()
         )
     }
     val LIME_BALLOON = BLOCKS.register("lime_balloon") {
         BalloonBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_LIGHT_GREEN).strength(0.8F).sound(SoundType.WOOL)
+            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_LIGHT_GREEN).strength(0.8F).sound(SoundType.WOOL).requiresCorrectToolForDrops()
         )
     }
     val GREEN_BALLOON = BLOCKS.register("green_balloon") {
         BalloonBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_GREEN).strength(0.8F).sound(SoundType.WOOL)
+            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_GREEN).strength(0.8F).sound(SoundType.WOOL).requiresCorrectToolForDrops()
         )
     }
     val LIGHT_BLUE_BALLOON = BLOCKS.register("light_blue_balloon") {
         BalloonBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_LIGHT_BLUE).strength(0.8F).sound(SoundType.WOOL)
+            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_LIGHT_BLUE).strength(0.8F).sound(SoundType.WOOL).requiresCorrectToolForDrops()
         )
     }
     val CYAN_BALLOON = BLOCKS.register("cyan_balloon") {
         BalloonBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_CYAN).strength(0.8F).sound(SoundType.WOOL)
+            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_CYAN).strength(0.8F).sound(SoundType.WOOL).requiresCorrectToolForDrops()
         )
     }
     val BLUE_BALLOON = BLOCKS.register("blue_balloon") {
         BalloonBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_BLUE).strength(0.8F).sound(SoundType.WOOL)
+            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_BLUE).strength(0.8F).sound(SoundType.WOOL).requiresCorrectToolForDrops()
         )
     }
     val PURPLE_BALLOON = BLOCKS.register("purple_balloon") {
         BalloonBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_PURPLE).strength(0.8F).sound(SoundType.WOOL)
+            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_PURPLE).strength(0.8F).sound(SoundType.WOOL).requiresCorrectToolForDrops()
         )
     }
     val MAGENTA_BALLOON = BLOCKS.register("magenta_balloon") {
         BalloonBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_MAGENTA).strength(0.8F).sound(SoundType.WOOL)
+            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_MAGENTA).strength(0.8F).sound(SoundType.WOOL).requiresCorrectToolForDrops()
         )
     }
     val PINK_BALLOON = BLOCKS.register("pink_balloon") {
         BalloonBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_PINK).strength(0.8F).sound(SoundType.WOOL)
+            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_PINK).strength(0.8F).sound(SoundType.WOOL).requiresCorrectToolForDrops()
         )
     }
     val BROWN_BALLOON = BLOCKS.register("brown_balloon") {
         BalloonBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_BROWN).strength(0.8F).sound(SoundType.WOOL)
+            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_BROWN).strength(0.8F).sound(SoundType.WOOL).requiresCorrectToolForDrops()
         )
     }
     // endregion

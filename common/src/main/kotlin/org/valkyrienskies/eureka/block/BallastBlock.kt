@@ -12,7 +12,7 @@ import net.minecraft.world.level.material.MapColor
 
 class BallastBlock : Block(
     Properties.of().mapColor(MapColor.STONE)
-        .sound(SoundType.STONE).strength(1.0f, 2.0f)
+        .sound(SoundType.STONE).strength(4.0f, 4.0f).requiresCorrectToolForDrops()
 ) {
 
     init {
