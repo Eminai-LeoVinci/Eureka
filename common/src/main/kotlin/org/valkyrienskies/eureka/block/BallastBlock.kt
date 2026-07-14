@@ -14,7 +14,7 @@ import org.valkyrienskies.mod.common.blockProps
 
 class BallastBlock : Block(
     blockProps().mapColor(MapColor.STONE)
-        .sound(SoundType.STONE).strength(1.0f, 2.0f)
+        .sound(SoundType.STONE).strength(4.0f, 4.0f).requiresCorrectToolForDrops()
 ) {
 
     init {

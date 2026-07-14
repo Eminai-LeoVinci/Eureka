@@ -26,7 +26,9 @@ import org.valkyrienskies.mod.common.blockProps
 import org.valkyrienskies.mod.common.getLoadedShipManagingPos
 
 class AnchorBlock :
-    HorizontalDirectionalBlock(blockProps().mapColor(MapColor.METAL).strength(5.0f, 6.0f).sound(SoundType.ANVIL)) {
+    HorizontalDirectionalBlock(
+        blockProps().mapColor(MapColor.METAL).strength(5.0f, 6.0f).sound(SoundType.ANVIL).requiresCorrectToolForDrops()
+    ) {
 
     val ANCHOR_BOTTOM = RotShapes.box(2.0, 2.0, 14.0, 14.0, 4.0, 16.0)
     val ANCHOR_ROD = RotShapes.box(7.0, 2.0, 14.0, 9.0, 24.0, 16.0)

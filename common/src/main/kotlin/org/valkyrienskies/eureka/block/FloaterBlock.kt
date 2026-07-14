@@ -18,7 +18,7 @@ import org.valkyrienskies.mod.common.getLoadedShipManagingPos
 
 class FloaterBlock : Block(
     blockProps().mapColor(MapColor.WOOD)
-        .sound(SoundType.WOOL).strength(1.0f, 2.0f)
+        .sound(SoundType.WOOL).strength(1.5f, 3.0f).requiresCorrectToolForDrops()
 ) {
     init {
         registerDefaultState(defaultBlockState().setValue(POWER, 0))
