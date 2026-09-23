@@ -145,6 +145,30 @@ class ShipHelmBlockEntity(pos: BlockPos, state: BlockState) :
             this.disassemble()
         }
         control?.ship = ship
+        syncSeatedRiders()
+    }
+
+    /**
+     * Keep each seated rider's server position on its seat.
+     *
+     * A rider's position is only refreshed while the seat is ticked, through vanilla `rideTick()` ->
+     * `positionRider()`. Whenever that lapses, or when the seat has already been removed by the time the
+     * player dismounts, the position is stale, and `LivingEntity.dismountVehicle` falls back to the
+     * player's own position with y = max(player, vehicle) instead of the seat's dismount location. That
+     * fallback never goes through the shipyard to world conversion, so the player is put back where they
+     * mounted rather than on the deck: behind the ship if it sailed on, and high above the ground if it
+     * descended, which is far enough to kill them.
+     *
+     * This block entity ticks anyway, so it can hold each rider on its seat. That keeps the normal
+     * dismount path correct and makes the fallback land in the right place too.
+     */
+    private fun syncSeatedRiders() {
+        val ship = this.ship ?: return
+        for (seat in seats) {
+            val rider = seat.passengers.firstOrNull() ?: continue
+            val pos = ship.shipToWorld.transformPosition(Vector3d(seat.x, seat.y, seat.z))
+            rider.moveTo(pos.x, pos.y, pos.z, rider.yRot, rider.xRot)
+        }
     }
 
     // Needs to get called server-side
